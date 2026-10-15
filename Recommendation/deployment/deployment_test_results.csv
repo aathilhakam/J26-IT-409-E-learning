@@ -1,0 +1,16 @@
+Student_ID,Predicted_Outcome,Model,Status,Number_of_Recommendations
+ST001,Successful,Random Forest,Recommendation available,2
+ST002,Successful,Random Forest,Recommendation available,2
+ST003,Successful,Random Forest,Recommendation available,2
+ST004,Waiting,Random Forest,Recommendation available,2
+ST005,Successful,Random Forest,Recommendation available,2
+ST006,Needs Practice,Random Forest,Recommendation available,2
+ST007,Needs Practice,Random Forest,Recommendation available,2
+ST008,Successful,Random Forest,Recommendation available,2
+ST009,Needs Practice,Random Forest,Recommendation available,2
+ST010,Successful,Random Forest,Recommendation available,2
+ST011,Needs Practice,Random Forest,Recommendation available,2
+ST012,Successful,Random Forest,Recommendation available,2
+ST013,Successful,Random Forest,Recommendation available,2
+ST014,Successful,Random Forest,Recommendation available,2
+ST015,Needs Practice,Random Forest,Recommendation available,2
