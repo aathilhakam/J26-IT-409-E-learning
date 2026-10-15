@@ -1,0 +1,16 @@
+Student_ID,Average_Score,Average_Attempts,Average_Time_Taken,Total_Activities,Completion_Rate,Pre_Test,Post_Test,Unit_Test,Monthly_Test,Term_Result,Motor_Skills_Score,Creativity_Score,Interactive_Engagement,Test_Improvement,Participation,Attention_Level,Confidence,Collaboration,Learning_Difficulty,Learning_Style,Participation_Score,Attention_Score,Confidence_Score,Collaboration_Score,Historical_Lessons,Average_Sequence_No,Completed_Historical_Lessons,Historical_Completion_Rate
+ST001,78.0,1.75,11.25,4,100.0,50.0,77.5,74.0,73.5,75.0,72.5,72.5,87.5,27.5,High,Medium,High,Good,Reading difficulty,Visual learner,3,2,3,3,4,2.5,2,50.0
+ST002,78.75,1.5,11.25,4,100.0,47.5,65.0,65.0,68.0,66.5,70.0,65.0,72.5,17.5,Low,Low,Medium,Needs improvement,Slow writing,Practical learner,1,1,2,2,4,2.5,2,50.0
+ST003,92.25,1.0,16.0,4,100.0,60.0,82.5,80.0,81.0,81.5,77.5,85.0,86.5,22.5,High,High,High,Good,None identified,Visual learner,3,3,3,3,4,2.5,2,50.0
+ST004,68.75,2.0,11.75,4,75.0,37.5,57.5,58.0,61.0,59.5,65.0,65.0,70.0,20.0,Medium,Medium,Medium,Good,Number recognition,Practical learner,2,2,2,3,4,2.5,1,25.0
+ST005,95.25,1.0,16.0,4,100.0,60.0,85.0,85.0,88.5,86.5,80.0,87.5,91.0,25.0,High,High,High,Excellent,None identified,Creative learner,3,3,3,4,4,2.5,3,75.0
+ST006,64.0,2.5,14.5,4,75.0,37.5,57.5,55.0,60.0,57.5,67.5,62.5,71.0,20.0,Medium,Low,Low,Needs improvement,Phonics difficulty,Auditory learner,2,1,1,2,4,2.5,2,50.0
+ST007,62.5,2.25,15.25,4,75.0,42.5,65.0,65.0,69.0,66.5,62.5,75.0,80.0,22.5,Low,Medium,Medium,Fair,Pencil control,Practical learner,1,2,2,1,4,2.5,2,50.0
+ST008,96.75,1.0,15.75,4,100.0,67.5,87.5,87.0,89.5,88.0,77.5,82.5,92.5,20.0,High,High,High,Excellent,None identified,Logical learner,3,3,3,4,4,2.5,3,75.0
+ST009,73.0,2.0,13.0,4,100.0,47.5,67.5,65.0,70.0,67.5,67.5,72.5,80.0,20.0,Medium,Medium,Medium,Good,Shape recognition,Visual learner,2,2,2,3,4,2.5,2,50.0
+ST010,92.25,1.25,18.5,4,100.0,47.5,72.5,72.0,76.5,74.0,77.5,77.5,84.0,25.0,High,High,High,Good,None identified,Creative learner,3,3,3,3,4,2.5,2,50.0
+ST011,55.75,2.75,15.75,4,50.0,37.5,55.0,53.0,58.5,56.0,55.0,65.0,70.0,17.5,Low,Low,Low,Needs improvement,Letter formation,Practical learner,1,1,1,2,4,2.5,2,50.0
+ST012,87.0,1.25,11.25,4,100.0,55.0,80.0,77.0,83.0,80.0,80.0,80.0,87.0,25.0,Medium,Medium,High,Good,Addition difficulty,Logical learner,2,2,3,3,4,2.5,3,75.0
+ST013,81.25,1.5,12.0,4,100.0,50.0,72.5,73.0,76.0,74.0,72.5,72.5,82.5,22.5,High,Medium,Medium,Good,Vocabulary development,Visual learner,3,2,2,3,4,2.5,2,50.0
+ST014,92.5,1.0,14.75,4,100.0,60.0,82.5,80.0,86.5,83.5,75.0,85.0,89.0,22.5,Medium,High,Medium,Fair,Listening difficulty,Auditory learner,2,3,2,1,4,2.5,2,50.0
+ST015,83.5,1.5,12.75,4,100.0,42.5,67.5,65.0,70.0,67.5,70.0,77.5,81.5,25.0,High,High,High,Excellent,None identified,Creative learner,3,3,3,4,4,2.5,2,50.0

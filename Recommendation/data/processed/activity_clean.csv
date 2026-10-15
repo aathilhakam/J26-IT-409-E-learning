@@ -1,0 +1,61 @@
+Activity_ID,Student_ID,Lesson_ID,Activity_Type,Difficulty,Date,Completion_Status,Attempts,Time_Taken_Min,Score,Errors,Teacher_Evaluation
+ACT001,ST001,LES001,Number Game,Easy,2026-01-10,Completed,1,8,95,None recorded,Excellent
+ACT002,ST001,LES003,Phonics Exercise,Medium,2026-01-12,Completed,3,15,55,Letter sound confusion,Needs support
+ACT003,ST002,LES001,Worksheet,Easy,2026-01-15,Completed,1,10,85,Minor mistakes,Good
+ACT004,ST002,LES006,Pencil Tracing,Easy,2026-01-16,Completed,2,12,70,Uneven lines,Improving
+ACT005,ST003,LES009,Creative Drawing,Medium,2026-01-17,Completed,1,18,92,None recorded,Excellent
+ACT006,ST003,LES003,Letter Matching,Easy,2026-01-18,Completed,1,9,88,Minor mistakes,Good
+ACT007,ST004,LES002,Shape Sorting,Easy,2026-01-19,Completed,2,11,68,Shape confusion,Needs support
+ACT008,ST004,LES011,Balance Game,Medium,2026-01-20,In Progress,2,14,60,Balance difficulty,Improving
+ACT009,ST005,LES005,Number Puzzle,Medium,2026-01-21,Completed,1,10,96,None recorded,Excellent
+ACT010,ST005,LES013,Paper Craft,Medium,2026-01-22,Completed,1,20,91,None recorded,Excellent
+ACT011,ST006,LES014,Addition Game,Easy,2026-01-23,Completed,3,16,58,Counting errors,Needs support
+ACT012,ST006,LES015,Picture Vocabulary,Easy,2026-01-24,Completed,2,12,72,Word recall errors,Improving
+ACT013,ST007,LES006,Pencil Control,Easy,2026-01-25,Completed,3,15,52,Poor pencil control,Needs support
+ACT014,ST007,LES016,Cutting and Pasting,Medium,2026-01-26,In Progress,2,18,65,Cutting accuracy,Improving
+ACT015,ST008,LES018,Number Challenge,Hard,2026-01-27,Completed,1,12,98,None recorded,Excellent
+ACT016,ST008,LES017,Subtraction Game,Medium,2026-01-28,Completed,1,10,94,None recorded,Excellent
+ACT017,ST009,LES019,Ball Coordination,Medium,2026-01-29,Completed,3,16,62,Catching difficulty,Improving
+ACT018,ST009,LES012,Weather Matching,Easy,2026-01-30,Completed,1,9,86,Minor mistakes,Good
+ACT019,ST010,LES021,Clay Modelling,Medium,2026-02-01,Completed,1,22,95,None recorded,Excellent
+ACT020,ST010,LES022,Building Blocks,Hard,2026-02-02,Completed,2,20,88,Design errors,Good
+ACT021,ST011,LES023,Letter Tracing,Easy,2026-02-03,Completed,3,16,50,Incorrect letter formation,Needs support
+ACT022,ST011,LES004,Reading Practice,Medium,2026-02-04,In Progress,2,14,58,Word recognition errors,Improving
+ACT023,ST012,LES017,Subtraction Worksheet,Medium,2026-02-05,Completed,2,13,78,Minor calculation errors,Good
+ACT024,ST012,LES024,Geometry Puzzle,Medium,2026-02-06,Completed,1,11,90,None recorded,Excellent
+ACT025,ST013,LES025,Body Parts Matching,Easy,2026-02-07,Completed,1,8,89,None recorded,Excellent
+ACT026,ST013,LES011,Movement Challenge,Medium,2026-02-08,Completed,2,15,73,Movement sequence errors,Improving
+ACT027,ST014,LES026,Listening Story,Easy,2026-02-09,Completed,1,10,94,None recorded,Excellent
+ACT028,ST014,LES010,Story Drawing,Medium,2026-02-10,Completed,1,18,91,None recorded,Excellent
+ACT029,ST015,LES024,Shape Building,Easy,2026-02-11,Completed,2,12,75,Shape placement errors,Good
+ACT030,ST015,LES013,Paper Folding,Medium,2026-02-12,Completed,2,17,72,Uneven folds,Improving
+ACT031,ST001,LES005,Number Patterns,Medium,2026-02-13,Completed,1,10,92,None recorded,Excellent
+ACT032,ST002,LES009,Shape Drawing,Easy,2026-02-14,Completed,2,14,78,Uneven shapes,Good
+ACT033,ST003,LES010,Picture Storytelling,Medium,2026-02-15,Completed,1,17,95,None recorded,Excellent
+ACT034,ST004,LES001,Counting Objects,Easy,2026-02-16,Completed,2,12,72,Skipped objects,Improving
+ACT035,ST005,LES018,Advanced Number Puzzle,Hard,2026-02-17,Completed,1,13,97,None recorded,Excellent
+ACT036,ST006,LES003,Phonics Matching,Medium,2026-02-18,Completed,3,16,62,Sound confusion,Needs support
+ACT037,ST007,LES013,Paper Folding,Easy,2026-02-19,Completed,2,15,68,Incorrect folds,Improving
+ACT038,ST008,LES009,Creative Design,Hard,2026-02-20,Completed,1,19,96,None recorded,Excellent
+ACT039,ST009,LES011,Jumping Activity,Easy,2026-02-21,Completed,2,12,74,Balance difficulty,Improving
+ACT040,ST010,LES012,Nature Classification,Medium,2026-02-22,Completed,1,14,93,None recorded,Excellent
+ACT041,ST011,LES015,Word Matching,Easy,2026-02-23,Completed,3,15,60,Vocabulary confusion,Needs support
+ACT042,ST012,LES014,Addition with Counters,Easy,2026-02-24,Completed,1,11,88,Minor mistakes,Good
+ACT043,ST013,LES016,Craft Cutting,Medium,2026-02-25,Completed,2,16,76,Cutting errors,Improving
+ACT044,ST014,LES026,Story Sequencing,Medium,2026-02-26,Completed,1,12,90,None recorded,Excellent
+ACT045,ST015,LES005,Pattern Recognition,Medium,2026-02-27,Completed,1,10,91,None recorded,Excellent
+ACT046,ST001,LES003,Sound Recognition,Easy,2026-02-28,Completed,2,12,70,Some sound confusion,Improving
+ACT047,ST002,LES006,Line Tracing,Easy,2026-03-01,Completed,1,9,82,Minor errors,Good
+ACT048,ST003,LES021,Clay Shapes,Medium,2026-03-02,Completed,1,20,94,None recorded,Excellent
+ACT049,ST004,LES002,Shape Matching,Easy,2026-03-03,Completed,2,10,75,Minor shape confusion,Improving
+ACT050,ST005,LES010,Story Creation,Hard,2026-03-04,Completed,1,21,97,None recorded,Excellent
+ACT051,ST006,LES017,Subtraction Practice,Medium,2026-03-05,In Progress,2,14,64,Calculation errors,Improving
+ACT052,ST007,LES023,Letter Formation,Easy,2026-03-06,Completed,2,13,65,Letter spacing errors,Improving
+ACT053,ST008,LES022,Construction Challenge,Hard,2026-03-07,Completed,1,22,99,None recorded,Excellent
+ACT054,ST009,LES019,Throwing and Catching,Medium,2026-03-08,Completed,2,15,70,Catching errors,Improving
+ACT055,ST010,LES013,Creative Paper Craft,Medium,2026-03-09,Completed,1,18,93,None recorded,Excellent
+ACT056,ST011,LES004,Sentence Reading,Medium,2026-03-10,In Progress,3,18,55,Word decoding difficulty,Needs support
+ACT057,ST012,LES024,Geometry Matching,Easy,2026-03-11,Completed,1,10,92,None recorded,Excellent
+ACT058,ST013,LES025,Human Body Puzzle,Easy,2026-03-12,Completed,1,9,87,Minor mistakes,Good
+ACT059,ST014,LES010,Creative Drawing,Medium,2026-03-13,Completed,1,19,95,None recorded,Excellent
+ACT060,ST015,LES018,Number Challenge,Hard,2026-03-14,Completed,1,12,96,None recorded,Excellent
