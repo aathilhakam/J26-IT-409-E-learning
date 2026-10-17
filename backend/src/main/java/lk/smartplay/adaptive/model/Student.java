@@ -8,8 +8,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Document("students")
 public class Student {
+
     @Id
     private String id;
+
+    // NEW: Student ID from Excel / research dataset
+    private String externalStudentId;
+
     private String name;
     private String grade;
     private String ownerId;
@@ -27,6 +32,16 @@ public class Student {
 
     public String getId() {
         return id;
+    }
+
+    // NEW: Getter
+    public String getExternalStudentId() {
+        return externalStudentId;
+    }
+
+    // NEW: Setter
+    public void setExternalStudentId(String externalStudentId) {
+        this.externalStudentId = externalStudentId;
     }
 
     public String getName() {
