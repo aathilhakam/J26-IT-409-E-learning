@@ -437,7 +437,7 @@ function App() {
               </Field>
               <div className="score-fields">
                 <Field label="Score"><input name="score" type="number" min="0" step="0.5" defaultValue="4" required /></Field>
-                <Field label="Out of"><input name="maxScore" type="number" min="0.1" step="0.5" defaultValue="5" required /></Field>
+                <Field label="Out of"><input name="maxScore" type="number" min="0.5" step="0.5" defaultValue="5" required /></Field>
               </div>
               <Field label="Observation" hint="Optional">
                 <textarea name="notes" rows={3} placeholder="What did you notice during the activity?" />
@@ -688,7 +688,7 @@ function App() {
             </Field>
             <div className="score-fields">
               <Field label="Score"><input name="score" type="number" min="0" step="0.5" defaultValue="4" required /></Field>
-              <Field label="Out of"><input name="maxScore" type="number" min="0.1" step="0.5" defaultValue="5" required /></Field>
+              <Field label="Out of"><input name="maxScore" type="number" min="0.5" step="0.5" defaultValue="5" required /></Field>
             </div>
             <Field label="Observation" hint="Optional">
               <textarea name="notes" rows={3} placeholder="What did you notice during the activity?" />
@@ -1166,6 +1166,8 @@ function StudentProfilePage({
         </Card>
       </div>
 
+      <AIRecommendationPanel studentId={activeStudent.id} />
+
       <Card as="section" className="student-profile-card student-profile-recommendations">
         <div className="student-profile-card-heading">
           <div><span className="dashboard-section-kicker">PERSONALIZED LEARNING</span><h2>Learning pathways</h2><p>Suggested activities created from this student’s learning records.</p></div>
@@ -1190,6 +1192,211 @@ function StudentProfilePage({
         )}
       </Card>
     </div>
+  );
+}
+
+// Displays Python Random Forest results separately from the existing
+// Spring Boot recommendations and teacher approval workflow.
+function AIRecommendationPanel({ studentId }) {
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setResult(null);
+    setError("");
+
+    if (!studentId) {
+      setLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    async function loadRecommendation() {
+      setLoading(true);
+
+      try {
+        const data = await api.aiRecommendation(studentId);
+
+        if (!data || typeof data !== "object" || Array.isArray(data)) {
+          throw new Error("The AI service returned an invalid response.");
+        }
+
+        if (!cancelled) {
+          setResult(data);
+        }
+      } catch (cause) {
+        if (!cancelled) {
+          setResult(null);
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : "AI recommendation unavailable."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadRecommendation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [studentId]);
+
+  const probabilities =
+    result?.Prediction_Probabilities &&
+    typeof result.Prediction_Probabilities === "object" &&
+    !Array.isArray(result.Prediction_Probabilities)
+      ? result.Prediction_Probabilities
+      : {};
+
+  const lessons = Array.isArray(result?.Learning_Path)
+    ? result.Learning_Path
+    : [];
+
+  return (
+    <Card
+      as="section"
+      className="student-profile-card student-profile-recommendations"
+      aria-busy={loading}
+    >
+      <div className="student-profile-card-heading">
+        <div>
+          <span className="dashboard-section-kicker">RANDOM FOREST AI</span>
+          <h2>AI-Powered Learning Path</h2>
+          <p>Model prediction and curriculum recommendations for this learner.</p>
+        </div>
+      </div>
+
+      {!studentId ? (
+        <div className="student-profile-blank" role="status">
+          <span>ⓘ</span>
+          <div>
+            <strong>Select a learner</strong>
+            <p>Select a student to view AI recommendations.</p>
+          </div>
+        </div>
+      ) : loading ? (
+        <div className="student-profile-blank" role="status">
+          <span>…</span>
+          <div>
+            <strong>Loading AI recommendations</strong>
+            <p>Contacting the AI service.</p>
+          </div>
+        </div>
+      ) : error ? (
+        <div className="student-profile-blank" role="alert">
+          <span>ⓘ</span>
+          <div>
+            <strong>AI learning path not available</strong>
+            <p>{error}</p>
+            <p>
+              Check that this learner has a valid external dataset ID and that
+              both the Spring Boot backend and Python AI service are running.
+            </p>
+          </div>
+        </div>
+      ) : result ? (
+        <div style={{ display: "grid", gap: "1rem" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: "1rem",
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
+            <div>
+              <strong>Predicted outcome:</strong>{" "}
+              {result.Predicted_Outcome ?? "Unknown"}
+            </div>
+            <Badge tone="neutral">{result.Model ?? "AI model"}</Badge>
+            <span>
+              {lessons.length} recommended {lessons.length === 1 ? "lesson" : "lessons"}
+            </span>
+          </div>
+
+          {Object.keys(probabilities).length > 0 ? (
+            <div aria-label="Model prediction probabilities" style={{ display: "grid", gap: "0.75rem" }}>
+              <h3>Prediction probabilities</h3>
+              {Object.entries(probabilities).map(([outcome, probability]) => {
+                const parsedProbability = Number(probability);
+                const safeProbability = Number.isFinite(parsedProbability)
+                  ? Math.max(0, Math.min(1, parsedProbability))
+                  : 0;
+
+                return (
+                  <div key={outcome}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem" }}>
+                      <span>{outcome}</span>
+                      <strong>{(safeProbability * 100).toFixed(1)}%</strong>
+                    </div>
+                    <div style={{ height: 8, background: "#e5e7eb", borderRadius: 8, overflow: "hidden" }}>
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${safeProbability * 100}%`,
+                          background: "#6d5ce7",
+                          borderRadius: 8,
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p>No prediction probabilities were returned.</p>
+          )}
+
+          {lessons.length > 0 ? (
+            <div className="student-profile-pathway-list">
+              {lessons.map((lesson, index) => (
+                <article
+                  className="student-profile-pathway"
+                  key={`${lesson?.Recommended_Lesson_ID ?? "lesson"}-${index}`}
+                >
+                  <span className="student-profile-pathway-icon" aria-hidden="true">✧</span>
+                  <div>
+                    <div className="student-profile-pathway-meta">
+                      <strong>{index + 1}. {lesson?.Recommended_Topic ?? "Recommended activity"}</strong>
+                      <Badge tone="neutral">{lesson?.Difficulty_Level ?? "Not specified"}</Badge>
+                    </div>
+                    <p><strong>Subject:</strong> {lesson?.Recommended_Subject ?? "Not specified"}</p>
+                    <p><strong>Objective:</strong> {lesson?.Learning_Objective ?? "Not specified"}</p>
+                    <p><strong>Classroom activity:</strong> {lesson?.Classroom_Activities ?? "Not specified"}</p>
+                    <p><strong>Teaching strategy:</strong> {lesson?.Teaching_Strategy ?? "Not specified"}</p>
+                    <p><strong>Teacher action:</strong> {lesson?.Teacher_Action ?? "Not specified"}</p>
+                    <small>
+                      {lesson?.Recommended_Lesson_ID ?? "Lesson ID unavailable"}
+                      {lesson?.Learning_Stage ? ` · ${lesson.Learning_Stage}` : ""}
+                      {lesson?.Recommended_Duration ? ` · ${lesson.Recommended_Duration}` : ""}
+                    </small>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p>No learning path lessons were returned for this student.</p>
+          )}
+
+          <small>
+            Model probabilities are estimates, not guarantees. Teachers should
+            review recommendations before using them.
+          </small>
+        </div>
+      ) : (
+        <p>No AI recommendation was returned.</p>
+      )}
+    </Card>
   );
 }
 
