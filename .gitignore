@@ -6,3 +6,17 @@ target/
 .idea/
 .vscode/
 *.iml
+
+# Python AI Recommendation
+AI-Recommendation/**/__pycache__/
+AI-Recommendation/**/*.pyc
+AI-Recommendation/.venv/
+AI-Recommendation/venv/
+AI-Recommendation/**/.ipynb_checkpoints/
+AI-Recommendation/.env
+AI-Recommendation/.env.*
+
+# Additional Python and macOS exclusions
+.DS_Store
+AI-Recommendation/.pytest_cache/
+AI-Recommendation/.benchmarks/

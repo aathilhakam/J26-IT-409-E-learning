@@ -1,0 +1,101 @@
+Student_ID,Participation,Attention_Level,Confidence,Collaboration,Learning_Difficulty,Learning_Style,Teacher_Comments,Recommendation
+ST001,High,Medium,High,Good,Reading difficulty,Visual learner,Understands concepts quickly,More reading activities
+ST002,Low,Low,Medium,Needs improvement,Slow writing,Practical learner,Requires guidance,Individual support
+ST003,High,High,High,Good,None identified,Visual learner,Enjoys picture-based tasks,Advanced visual activities
+ST004,Medium,Medium,Medium,Good,Number recognition,Practical learner,Needs repeated examples,Counting games
+ST005,High,High,High,Excellent,None identified,Creative learner,Produces imaginative drawings,Open-ended art activities
+ST006,Medium,Low,Low,Needs improvement,Phonics difficulty,Auditory learner,Hesitates during reading,Guided phonics practice
+ST007,Low,Medium,Medium,Fair,Pencil control,Practical learner,Needs help holding pencil,Fine motor exercises
+ST008,High,High,High,Excellent,None identified,Logical learner,Solves number puzzles quickly,Advanced number puzzles
+ST009,Medium,Medium,Medium,Good,Shape recognition,Visual learner,Benefits from demonstrations,Shape-matching games
+ST010,High,High,High,Good,None identified,Creative learner,Enjoys craft activities,Creative construction tasks
+ST011,Low,Low,Low,Needs improvement,Letter formation,Practical learner,Requires tracing support,Guided letter tracing
+ST012,Medium,Medium,High,Good,Addition difficulty,Logical learner,Improves with counters,Hands-on addition
+ST013,High,Medium,Medium,Good,Vocabulary development,Visual learner,Recognizes familiar pictures,Picture-word matching
+ST014,Medium,High,Medium,Fair,Listening difficulty,Auditory learner,Easily distracted by noise,Short listening activities
+ST015,High,High,High,Excellent,None identified,Creative learner,Creates original stories,Picture storytelling
+ST016,Medium,Medium,Medium,Good,Counting difficulty,Practical learner,Counts with assistance,Object-counting activities
+ST017,Low,Medium,Low,Fair,Reading confidence,Visual learner,Avoids reading aloud,Paired reading practice
+ST018,High,High,High,Excellent,None identified,Visual learner,Quickly identifies patterns,Advanced pattern games
+ST019,Medium,Low,Medium,Needs improvement,Attention difficulty,Practical learner,Needs frequent reminders,Short structured activities
+ST020,High,Medium,High,Good,None identified,Auditory learner,Follows spoken instructions,Interactive storytelling
+ST021,Medium,Medium,Medium,Good,Fine motor coordination,Practical learner,Needs practice with small objects,Bead-threading activities
+ST022,High,High,High,Excellent,None identified,Creative learner,Enjoys experimenting with colours,Colour-mixing activities
+ST023,Low,Low,Low,Needs improvement,Number sequencing,Visual learner,Confuses number order,Number sequencing games
+ST024,Medium,High,Medium,Good,Subtraction difficulty,Logical learner,Understands with concrete examples,Subtraction using counters
+ST025,High,Medium,High,Good,None identified,Practical learner,Learns through hands-on tasks,Interactive learning stations
+ST026,Medium,Medium,Medium,Fair,Cutting and pasting,Practical learner,Needs supervision with scissors,Supervised craft practice
+ST027,High,High,High,Excellent,None identified,Visual learner,Remembers images well,Visual memory games
+ST028,Low,Medium,Medium,Fair,Vocabulary difficulty,Auditory learner,Needs repeated word exposure,Repetition and word games
+ST029,Medium,Low,Low,Needs improvement,Task completion,Practical learner,Leaves activities unfinished,Short guided tasks
+ST030,High,High,High,Excellent,None identified,Logical learner,Enjoys sorting and classifying,Classification challenges
+ST031,Medium,Medium,Medium,Good,Letter recognition,Visual learner,Confuses similar letters,Letter-matching cards
+ST032,High,High,High,Good,None identified,Creative learner,Enjoys drawing independently,Independent drawing projects
+ST033,Low,Low,Medium,Needs improvement,Pencil grip,Practical learner,Tires during writing tasks,Short pencil-control exercises
+ST034,Medium,Medium,High,Good,Shape construction,Practical learner,Builds with guidance,Shape-building challenges
+ST035,High,High,High,Excellent,None identified,Auditory learner,Retells stories accurately,Story sequencing activities
+ST036,Medium,Medium,Medium,Good,Addition fluency,Logical learner,Counts fingers to add,Addition practice games
+ST037,Low,Medium,Low,Fair,Group participation,Social learner,Rarely volunteers ideas,Small-group activities
+ST038,High,High,High,Excellent,None identified,Practical learner,Learns quickly through movement,Movement-based learning
+ST039,Medium,Low,Medium,Fair,Listening attention,Auditory learner,Misses multistep instructions,One-step instructions and practice
+ST040,High,Medium,High,Good,None identified,Visual learner,Recognizes patterns in pictures,Visual pattern challenges
+ST041,Medium,Medium,Medium,Good,Colour recognition,Visual learner,Confuses some colours,Colour-sorting games
+ST042,Low,Low,Low,Needs improvement,Reading readiness,Visual learner,Needs help connecting letters and sounds,Guided phonics activities
+ST043,High,High,High,Excellent,None identified,Creative learner,Enjoys clay modelling,Clay design activities
+ST044,Medium,Medium,Medium,Fair,Balance and coordination,Practical learner,Needs practice following movement sequences,Guided balance games
+ST045,High,High,High,Good,None identified,Logical learner,Completes matching tasks accurately,More complex matching puzzles
+ST046,Medium,Medium,Medium,Good,Sentence comprehension,Auditory learner,Understands short instructions,Story comprehension games
+ST047,Low,Medium,Low,Needs improvement,Hand-eye coordination,Practical learner,Struggles to catch a ball,Supervised ball games
+ST048,High,High,High,Excellent,None identified,Visual learner,Quickly identifies shapes,Geometry activities
+ST049,Medium,Low,Medium,Fair,Task persistence,Practical learner,Gives up on difficult tasks,Scaffolded problem-solving
+ST050,High,Medium,High,Good,None identified,Creative learner,Produces detailed artwork,Guided creative projects
+ST051,Medium,Medium,Medium,Good,Number comparison,Logical learner,Needs help comparing quantities,Number comparison games
+ST052,Low,Low,Low,Needs improvement,Letter formation,Practical learner,Letters are inconsistently formed,Multisensory tracing
+ST053,High,High,High,Excellent,None identified,Social learner,Helps classmates during tasks,Peer-learning activities
+ST054,Medium,Medium,High,Good,Fine motor precision,Practical learner,Improves with demonstrations,Paper-folding activities
+ST055,High,High,High,Excellent,None identified,Auditory learner,Enjoys rhymes and songs,Phonics songs and games
+ST056,Low,Medium,Medium,Fair,Shape recognition,Visual learner,Needs extra time identifying shapes,Shape-sorting practice
+ST057,Medium,Medium,Medium,Good,Cutting accuracy,Practical learner,Needs help following cutting lines,Guided cutting activities
+ST058,High,High,High,Excellent,None identified,Creative learner,Suggests imaginative solutions,Open-ended creative challenges
+ST059,Medium,Low,Medium,Needs improvement,Concentration,Practical learner,Attention varies across tasks,Short activities with breaks
+ST060,High,High,High,Good,None identified,Logical learner,Understands simple number patterns,Pattern extension tasks
+ST061,Medium,Medium,Medium,Good,Word recognition,Visual learner,Recognizes familiar words,Picture-supported reading
+ST062,Low,Low,Low,Needs improvement,Writing endurance,Practical learner,Needs breaks during writing,Short writing sessions
+ST063,High,High,High,Excellent,None identified,Visual learner,Remembers visual sequences,Visual sequencing games
+ST064,Medium,Medium,Medium,Fair,Vocabulary recall,Auditory learner,Needs prompts to recall words,Word-recall games
+ST065,High,High,High,Excellent,None identified,Practical learner,Enjoys assembling objects,Construction challenges
+ST066,Low,Medium,Medium,Fair,Counting accuracy,Practical learner,Sometimes skips objects while counting,One-to-one counting practice
+ST067,Medium,Medium,High,Good,None identified,Creative learner,Enjoys creating patterns,Pattern-making activities
+ST068,High,High,High,Excellent,None identified,Social learner,Shares materials appropriately,Collaborative building tasks
+ST069,Medium,Low,Low,Needs improvement,Following instructions,Auditory learner,Needs instructions repeated,Demonstration-based activities
+ST070,High,High,High,Good,None identified,Visual learner,Identifies details in pictures,Picture observation tasks
+ST071,Medium,Medium,Medium,Good,Early reading fluency,Visual learner,Reads familiar words slowly,Repeated shared reading
+ST072,Low,Low,Low,Needs improvement,Pencil control,Practical learner,Needs support tracing curved lines,Fine motor tracing
+ST073,High,High,High,Excellent,None identified,Creative learner,Enjoys designing objects,Design-and-build challenges
+ST074,Medium,Medium,Medium,Fair,Number patterns,Logical learner,Needs prompts to extend patterns,Guided pattern activities
+ST075,High,High,High,Excellent,None identified,Auditory learner,Follows familiar songs and rhythms,Rhythm and movement games
+ST076,Low,Medium,Medium,Fair,Cooperative play,Social learner,Needs reminders to take turns,Turn-taking games
+ST077,Medium,Medium,High,Good,None identified,Practical learner,Learns well with physical objects,Hands-on exploration
+ST078,High,High,High,Excellent,None identified,Visual learner,Organizes objects by category,Sorting and classification
+ST079,Medium,Low,Medium,Needs improvement,Task attention,Practical learner,Needs support to return to tasks,Structured short activities
+ST080,High,High,High,Good,None identified,Creative learner,Creates stories from pictures,Story creation activities
+ST081,Medium,Medium,Medium,Good,Subtraction concepts,Logical learner,Benefits from visual examples,Subtraction with objects
+ST082,Low,Low,Low,Needs improvement,Phonics recognition,Auditory learner,Has difficulty distinguishing sounds,Sound discrimination games
+ST083,High,High,High,Excellent,None identified,Practical learner,Enjoys movement challenges,Guided obstacle courses
+ST084,Medium,Medium,Medium,Fair,Paper folding,Practical learner,Needs support following steps,Step-by-step paper folding
+ST085,High,High,High,Excellent,None identified,Visual learner,Remembers picture details,Visual memory challenges
+ST086,Medium,Medium,Medium,Good,Listening comprehension,Auditory learner,Understands short stories,Story sequencing practice
+ST087,Low,Medium,Low,Needs improvement,Confidence in drawing,Creative learner,Hesitates to begin drawings,Guided drawing with choices
+ST088,High,High,High,Excellent,None identified,Logical learner,Solves age-appropriate puzzles,Progressive logic puzzles
+ST089,Medium,Low,Medium,Fair,Collaboration,Social learner,Needs support sharing ideas,Partner-based activities
+ST090,High,High,High,Good,None identified,Practical learner,Applies learning to objects,Real-world sorting tasks
+ST091,Medium,Medium,Medium,Good,Letter-sound association,Visual learner,Recognizes some letter sounds,Letter-sound matching
+ST092,Low,Low,Low,Needs improvement,Fine motor coordination,Practical learner,Needs assistance with small objects,Supervised manipulation tasks
+ST093,High,High,High,Excellent,None identified,Creative learner,Experiments with materials,Guided creative exploration
+ST094,Medium,Medium,Medium,Good,Counting and grouping,Logical learner,Needs practice grouping quantities,Counting and grouping games
+ST095,High,High,High,Excellent,None identified,Social learner,Participates positively in groups,Collaborative storytelling
+ST096,Low,Medium,Medium,Fair,Reading confidence,Visual learner,Prefers reading with teacher support,Shared reading sessions
+ST097,Medium,Medium,High,Good,None identified,Practical learner,Improves through repeated practice,Hands-on skill-building tasks
+ST098,High,High,High,Excellent,None identified,Visual learner,Enjoys solving picture puzzles,Progressive picture puzzles
+ST099,Medium,Low,Medium,Needs improvement,Attention during group work,Social learner,Needs reminders during group tasks,"Short, structured group activities"
+ST100,High,High,High,Excellent,None identified,Creative learner,Shows interest in original projects,Personalized creative projects

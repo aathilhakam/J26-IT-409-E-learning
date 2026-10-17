@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+env/
+.ipynb_checkpoints/
+
+# Data & models
+*.pkl
+*.joblib
+*.h5
+*.pt
+
+# Env
+.env
+.env.local
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
