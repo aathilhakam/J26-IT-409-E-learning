@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { api } from "../services/api";
 import { Avatar, Badge, Button, Card, EmptyState, Field, SectionHeading, WorkspaceLayout } from "../components";
 import { AuthPage } from "../features/auth/AuthPage";
+import { CreativityLab } from "../features/creativity/CreativityLab";
 
 const initialProfile = null;
 
@@ -22,7 +23,7 @@ function displayDate(value) {
 function App() {
   const [pathname, setPathname] = useState(() => {
     const currentPath = window.location.pathname;
-    return currentPath === "/login" || currentPath === "/register" || currentPath === "/dashboard" || currentPath === "/dashboard/profile"
+    return currentPath === "/login" || currentPath === "/register" || currentPath === "/dashboard" || currentPath === "/dashboard/creativity" || currentPath === "/dashboard/profile"
       || currentPath === "/dashboard/content"
       ? currentPath
       : "/login";
@@ -34,6 +35,7 @@ function App() {
   const [profile, setProfile] = useState(initialProfile);
   const [records, setRecords] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
+  const [creativityAssessments, setCreativityAssessments] = useState([]);
   const [learnerDataBusy, setLearnerDataBusy] = useState(false);
   const learnerDataRequestId = useRef(0);
   const [contentItems, setContentItems] = useState([]);
@@ -46,8 +48,8 @@ function App() {
   const [showRecordForm, setShowRecordForm] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [pendingDashboardSection, setPendingDashboardSection] = useState("");
-  const isProtectedPath = pathname === "/dashboard" || pathname === "/dashboard/profile" || pathname === "/dashboard/content";
-  const isDashboardPath = pathname === "/dashboard" || pathname === "/dashboard/profile";
+  const isProtectedPath = pathname === "/dashboard" || pathname === "/dashboard/creativity" || pathname === "/dashboard/profile" || pathname === "/dashboard/content";
+  const isDashboardPath = pathname === "/dashboard" || pathname === "/dashboard/creativity" || pathname === "/dashboard/profile";
 
   useEffect(() => {
     if (window.location.pathname !== pathname) {
@@ -55,7 +57,7 @@ function App() {
     }
     const handlePopState = () => {
       const currentPath = window.location.pathname;
-      setPathname(currentPath === "/login" || currentPath === "/register" || currentPath === "/dashboard" || currentPath === "/dashboard/profile" || currentPath === "/dashboard/content"
+      setPathname(currentPath === "/login" || currentPath === "/register" || currentPath === "/dashboard" || currentPath === "/dashboard/creativity" || currentPath === "/dashboard/profile" || currentPath === "/dashboard/content"
         ? currentPath
         : "/login");
     };
@@ -76,7 +78,7 @@ function App() {
       navigate("/dashboard");
       return;
     }
-    navigate(page === "Dashboard" ? "/dashboard" : page === "Student Profile" ? "/dashboard/profile" : "/dashboard/content");
+    navigate(page === "Dashboard" ? "/dashboard" : page === "Creativity" ? "/dashboard/creativity" : page === "Student Profile" ? "/dashboard/profile" : "/dashboard/content");
   }, [navigate]);
 
   useEffect(() => {
@@ -109,6 +111,7 @@ function App() {
     const user = pathname === "/register"
       ? await api.register(account)
       : await api.login(account);
+    setCreativityAssessments([]);
     setSessionUser(user);
     navigate("/dashboard");
   }, [navigate, pathname]);
@@ -117,6 +120,7 @@ function App() {
     setError("");
     try {
       await api.logout();
+      setCreativityAssessments([]);
       setSessionUser(null);
       navigate("/login");
     } catch (cause) {
@@ -303,6 +307,25 @@ function App() {
     }
   }
 
+  async function handleCreativityRecord({ score, notes }) {
+    if (!activeId) throw new Error("Select a learner before saving a creativity assessment.");
+    setError("");
+    try {
+      const createdRecord = await api.addRecord(activeId, {
+        domain: "Creativity",
+        score,
+        maxScore: 5,
+        notes,
+      });
+      await loadLearnerData(activeId);
+      return createdRecord;
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "Could not save the creativity assessment.";
+      setError(message);
+      throw new Error(message);
+    }
+  }
+
   async function handleGenerate() {
     if (!activeId) return;
     setSaving(true);
@@ -385,6 +408,44 @@ function App() {
           onDelete={handleContentDelete}
         />
         <footer className="page-footer">SMARTPLAY <span>·</span> Your classroom resources, together in one place.</footer>
+      </WorkspaceLayout>
+    );
+  }
+
+  if (pathname === "/dashboard/creativity") {
+    return (
+      <WorkspaceLayout
+        activePage="Creativity"
+        onNavigate={handleDashboardNavigate}
+        teacherInitial={initials(sessionUser.name) || "T"}
+        onLogout={handleLogout}
+      >
+        {error && (
+          <div className="alert" role="alert">
+            <span>{error}</span>
+            <Button variant="quiet" type="button" onClick={() => setError("")} aria-label="Dismiss error">×</Button>
+          </div>
+        )}
+        <CreativityLab
+          students={students}
+          activeStudentId={activeId}
+          records={records}
+          assessments={creativityAssessments}
+          onSelectStudent={setActiveId}
+          onAddStudent={() => setShowStudentForm(true)}
+          onSaveAssessment={handleCreativityRecord}
+          onAssessmentComplete={(assessment) => setCreativityAssessments((current) => [assessment, ...current])}
+          busy={busy}
+          saving={saving}
+        />
+        <footer className="page-footer">SMARTPLAY <span>·</span> Every idea is worth exploring.</footer>
+        {showStudentForm && (
+          <LearnerModal
+            onClose={() => setShowStudentForm(false)}
+            onSubmit={handleCreateStudent}
+            saving={saving}
+          />
+        )}
       </WorkspaceLayout>
     );
   }
@@ -646,6 +707,11 @@ function App() {
             <span className="shortcut-icon blue">♧</span><span className="shortcut-arrow">↗</span>
             <strong>Student profiles</strong><small>Manage learners and view their learning details.</small>
             <span className="shortcut-meta">{students.length} {students.length === 1 ? "learner" : "learners"} enrolled</span>
+          </button>
+          <button type="button" className="dashboard-shortcut" onClick={() => navigate("/dashboard/creativity")}>
+            <span className="shortcut-icon purple">✧</span><span className="shortcut-arrow">↗</span>
+            <strong>Creativity Lab</strong><small>Explore drawing, picture completion, and storytelling.</small>
+            <span className="shortcut-meta">{creativityAssessments.length} {creativityAssessments.length === 1 ? "assessment" : "assessments"} completed</span>
           </button>
           <button type="button" className="dashboard-shortcut" onClick={() => setShowRecordForm(true)} disabled={!activeStudent}>
             <span className="shortcut-icon green">＋</span><span className="shortcut-arrow">↗</span>

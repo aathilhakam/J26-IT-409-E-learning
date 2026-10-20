@@ -14,17 +14,24 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import lk.smartplay.adaptive.config.SecurityConfig;
 import lk.smartplay.adaptive.model.ContentAsset;
+import lk.smartplay.adaptive.repository.TeacherAccountRepository;
 import lk.smartplay.adaptive.service.ContentAssetService;
 import lk.smartplay.adaptive.service.TeacherAccountService;
 
 @WebMvcTest(ContentAssetController.class)
+@Import(SecurityConfig.class)
+@ImportAutoConfiguration(ServletWebSecurityAutoConfiguration.class)
 class ContentAssetControllerTest {
     private static final String TEACHER_EMAIL = "teacher@example.test";
     private static final String TEACHER_ID = "teacher-1";
@@ -37,6 +44,9 @@ class ContentAssetControllerTest {
 
     @MockitoBean
     private TeacherAccountService accountService;
+
+    @MockitoBean
+    private TeacherAccountRepository teacherAccountRepository;
 
     @BeforeEach
     void setUp() {

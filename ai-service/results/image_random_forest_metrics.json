@@ -1,0 +1,32 @@
+{
+  "model": "RandomForestRegressor",
+  "feature_version": "rgb-hsv-histogram-grayscale-hog-v1",
+  "train_images": 139,
+  "train_students": 77,
+  "test_images": 27,
+  "test_students": 14,
+  "test_mae": 0.5411450050772271,
+  "train_mean_baseline_mae": 0.5394084453582764,
+  "target_metrics": {
+    "originality": {
+      "mae": 0.6495628908128908,
+      "r2": -0.06376288548530651
+    },
+    "elaboration": {
+      "mae": 0.6146668670835334,
+      "r2": 0.15751906859165077
+    },
+    "color_exploration": {
+      "mae": 0.6097866896478005,
+      "r2": 0.12693286887914768
+    },
+    "detail": {
+      "mae": 0.596983734167067,
+      "r2": 0.005767103074710955
+    },
+    "visual_organization": {
+      "mae": 0.23472484367484384,
+      "r2": -0.5852996414259573
+    }
+  }
+}

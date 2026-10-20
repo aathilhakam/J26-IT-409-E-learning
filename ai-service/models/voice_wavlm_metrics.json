@@ -1,0 +1,11 @@
+{
+    "model": "WavLM-Base + neural classification head",
+    "encoder_pretrained": true,
+    "encoder_fine_tuned": false,
+    "train_records": 16,
+    "test_records": 8,
+    "accuracy": 0.625,
+    "balanced_accuracy": 0.8333333333333334,
+    "macro_f1": 0.611111111111111,
+    "majority_baseline_accuracy": 0.75
+}

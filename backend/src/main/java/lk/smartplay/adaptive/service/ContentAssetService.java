@@ -12,6 +12,7 @@ import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -69,7 +70,7 @@ public class ContentAssetService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose a file to upload");
         }
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Files must be 20 MB or smaller");
+            throw new ResponseStatusException(HttpStatusCode.valueOf(413), "Files must be 20 MB or smaller");
         }
 
         String originalFileName = safeOriginalFileName(file.getOriginalFilename());
