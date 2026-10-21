@@ -186,7 +186,7 @@ export function CreativityLab({
     .sort((first, second) => new Date(second.completedAt) - new Date(first.completedAt));
   const savedScore = averageScore(records);
   const criteriaAverage = useMemo(
-    () => rubric.reduce((sum, item) => sum + rubricScores[item.id], 0) / rubric.length,
+    () => rubric.reduce((sum, item) => sum + (Number(rubricScores[item.id]) || 0), 0) / rubric.length,
     [rubricScores],
   );
 
@@ -390,7 +390,7 @@ export function CreativityLab({
       return;
     }
     if (activityId === "story" && !audioBlob) {
-      setError("Record the learner’s voice before running the voice Random Forest.");
+      setError("Record the learner’s voice before running WavLM voice analysis.");
       return;
     }
 
@@ -446,6 +446,11 @@ export function CreativityLab({
       return;
     }
 
+    if (rubric.some((item) => !Number.isInteger(rubricScores[item.id]) || rubricScores[item.id] < 1 || rubricScores[item.id] > 5)) {
+      setError("Enter a whole-number teacher observation score from 1 to 5 for every category.");
+      return;
+    }
+
     if (analyzingModels) {
       setError("Wait for the media analysis to finish before saving.");
       return;
@@ -493,7 +498,7 @@ export function CreativityLab({
         }
       }
       if (activityId !== "story" && imageAnalysisResult) {
-        imageSummary = `Random Forest image estimates: ${Object.entries(imageAnalysisResult.scores).map(([target, value]) => `${target.replaceAll("_", " ")} ${value}/5`).join(", ")}.`;
+        imageSummary = `ResNet18 image estimates: ${Object.entries(imageAnalysisResult.scores).map(([target, value]) => `${target.replaceAll("_", " ")} ${value}/5`).join(", ")}.`;
       }
       if (audioBlob && !analysis) {
         try {
@@ -503,12 +508,13 @@ export function CreativityLab({
         }
       }
       if (analysis) {
-        voiceSummary = `Random Forest voice estimates: ${Object.entries(analysis.scores).map(([target, value]) => `${target.replace(/_1_5$/, "")} ${value}/5`).join(", ")}.`;
+        voiceSummary = `WavLM voice classification: ${analysis.creativity_class} (${Math.round(analysis.model_score * 100)}% model confidence).`;
       }
       assessment.notes = `${selectedActivity.title} · ${selectedActivity.prompt} · Rubric: ${rubricSummary}. ${learnerResponse.slice(0, 100)} ${imageSummary} ${voiceSummary}`.trim();
       assessment.imageAnalysis = imageAnalysisResult;
       assessment.imageAnalysisError = imageAnalysisError;
       assessment.voiceAnalysis = analysis;
+      assessment.voiceAnalysisError = analysisError;
       const savedRecord = await onSaveAssessment({ score, notes: assessment.notes });
       assessment.recordId = savedRecord?.id;
       onAssessmentComplete(assessment);
@@ -638,7 +644,7 @@ export function CreativityLab({
             <Button variant="secondary" onClick={() => setView("journey")}>Student journey</Button>
             <Button onClick={() => setView("assessment")}>Start assessment <span aria-hidden="true">✧ →</span></Button>
           </Card>
-          <div className="creativity-research-note"><span>ⓘ</span><strong>Teacher observation tool</strong><span>The image Random Forest and optional voice Random Forest Regressor provide separate suggestions for your review. You remain in control of rubric scores.</span></div>
+          <div className="creativity-research-note"><span>ⓘ</span><strong>Teacher observation tool</strong><span>ResNet18 image estimates and optional WavLM voice classification are shown separately for your review. You remain in control of rubric scores.</span></div>
         </section>
       )}
 
@@ -757,9 +763,13 @@ export function CreativityLab({
                     canAnalyze={Boolean(audioBlob)}
                     onAnalyze={() => void analyzeLearnerMedia()}
                   />
-                  <RubricEditor scores={rubricScores} onChange={setRubricScores} />
+                  <Card className="creativity-teacher-observation-card">
+                    <h3>Teacher observation</h3>
+                    <p>Set these rubric scores independently. AI analysis never changes them automatically.</p>
+                    <RubricEditor scores={rubricScores} onChange={setRubricScores} />
+                  </Card>
                   <Button className="creativity-submit" onClick={() => void submitAssessment()} disabled={submitting || recording}>{submitting ? (audioBlob ? "Analyzing voice & saving…" : "Saving assessment…") : "Save learner’s story ✧"}</Button>
-                  <small className="creativity-next-note">Recorded voice is analyzed with the Random Forest model (up to 60 seconds); typed stories remain teacher-reviewed.</small>
+                  <small className="creativity-next-note">Recorded voice is analyzed with WavLM (up to 60 seconds); typed stories remain teacher-reviewed.</small>
                 </Card>
               ) : (
                 <>
@@ -771,7 +781,7 @@ export function CreativityLab({
                     <label className="creativity-file-button secondary">▣ Take a photo<input type="file" accept="image/*" capture="environment" onChange={chooseFile} /></label>
                     <div className="creativity-upload-hint"><span>▧</span><strong>PNG, JPG, or WEBP</strong><small>Up to 15 MB. Or draw directly on the canvas.</small></div>
                     <div className="creativity-optional-voice">
-                      <span className="creativity-step-label">OPTIONAL VOICE REFLECTION · RANDOM FOREST</span>
+                      <span className="creativity-step-label">OPTIONAL VOICE REFLECTION · WAVLM</span>
                       <p>Invite the learner to explain their picture. Image and voice estimates will be shown separately.</p>
                       <div className={`creativity-record-status${recording ? " recording" : ""}`}><i />{recording ? "Recording in progress" : audioUrl ? "Recording ready to play" : "Microphone ready"}<span>{String(Math.floor(recordingSeconds / 60)).padStart(2, "0")}:{String(recordingSeconds % 60).padStart(2, "0")}</span></div>
                       <div className="creativity-record-actions">
@@ -792,11 +802,15 @@ export function CreativityLab({
                       canAnalyze={Boolean(uploadedFile || hasDrawing || audioBlob)}
                       onAnalyze={() => void analyzeLearnerMedia()}
                     />
-                    <RubricEditor
-                      scores={rubricScores}
-                      onChange={setRubricScores}
-                      imageSuggestions={imageAnalysis?.scores}
-                    />
+                    <Card className="creativity-teacher-observation-card">
+                      <h3>Teacher observation</h3>
+                      <p>Set these rubric scores independently. AI analysis never changes them automatically.</p>
+                      <RubricEditor
+                        scores={rubricScores}
+                        onChange={setRubricScores}
+                        imageSuggestions={imageAnalysis?.scores}
+                      />
+                    </Card>
                     <Button className="creativity-submit" onClick={() => void submitAssessment()} disabled={submitting || analyzingModels || recording}>{submitting ? (audioBlob ? "Analyzing models & saving…" : "Analyzing image & saving…") : "Save & review ✧"}</Button>
                     <small className="creativity-next-note">AI estimates are experimental, shown separately, and do not replace the teacher’s rubric.</small>
                   </Card>
@@ -824,12 +838,12 @@ export function CreativityLab({
           {latestAssessment.activity !== "Storytelling" && (
             <Card className="creativity-image-model-result" aria-live="polite">
               <div className="creativity-voice-model-heading">
-                <span className="creativity-step-label">EXPERIMENTAL IMAGE ESTIMATES · RANDOM FOREST</span>
+                <span className="creativity-step-label">EXPERIMENTAL IMAGE ESTIMATES · RESNET18</span>
                 {latestAssessment.imageAnalysis && <strong>Average {latestAssessment.imageAnalysis.average_score.toFixed(1)}/5</strong>}
               </div>
               {latestAssessment.imageAnalysis ? (
                 <>
-                  <p>Exploratory estimates trained from teacher-scored drawings. On held-out students, this model’s MAE was {latestAssessment.imageAnalysis.test_mae?.toFixed(2) ?? "not reported"}/5 versus a teacher-score-average baseline of {latestAssessment.imageAnalysis.baseline_mae?.toFixed(2) ?? "not reported"}/5. It did not outperform that baseline, so use these as suggestions only; the teacher’s rubric remains authoritative.</p>
+                  <p>Exploratory ResNet18 estimates trained from teacher-scored drawings. On held-out students, MAE was {latestAssessment.imageAnalysis.test_mae?.toFixed(2) ?? "not reported"}/5 and R² was {latestAssessment.imageAnalysis.test_r2?.toFixed(2) ?? "not reported"}. Use these as suggestions only; the teacher’s rubric remains authoritative.</p>
                   <div className="creativity-image-model-scores">
                     {Object.entries(latestAssessment.imageAnalysis.scores).map(([target, value]) => (
                       <span key={target}><b>{target.replaceAll("_", " ")}</b><i><em style={{ width: `${Math.round(value / 5 * 100)}%` }} /></i><small>{value.toFixed(1)}/5</small></span>
@@ -845,21 +859,23 @@ export function CreativityLab({
           {(latestAssessment.activity === "Storytelling" || latestAssessment.voiceRecorded) && (
             <Card className="creativity-voice-model-result" aria-live="polite">
               <div className="creativity-voice-model-heading">
-                <span className="creativity-step-label">EXPERIMENTAL VOICE ESTIMATES · RANDOM FOREST</span>
-                {voiceAnalysis && <strong>Average {voiceAnalysis.average_score.toFixed(1)}/5</strong>}
+                <span className="creativity-step-label">EXPERIMENTAL VOICE CLASSIFICATION · WAVLM</span>
+                {latestAssessment.voiceAnalysis && <strong>{latestAssessment.voiceAnalysis.creativity_class}</strong>}
               </div>
-              {voiceAnalysis ? (
+              {latestAssessment.voiceAnalysis ? (
                 <>
-                  <p>These are exploratory estimates of vocal delivery, not speech transcription or a measure of story creativity. The teacher’s rubric remains authoritative.</p>
-                  <div className="creativity-voice-model-scores">
-                    {Object.entries(voiceAnalysis.scores).map(([target, value]) => (
-                      <span key={target}><b>{target.replace(/_1_5$/, "").replaceAll("_", " ")}</b><i><em style={{ width: `${Math.round(value / 5 * 100)}%` }} /></i><small>{value.toFixed(1)}/5</small></span>
+                  <p>WavLM predicts a broad voice creativity class; this is not a numeric rubric score or speech transcription. Teacher observation remains separate and authoritative.</p>
+                  <div className="creativity-wavlm-class-scores">
+                    {Object.entries(latestAssessment.voiceAnalysis.class_scores).map(([label, probability]) => (
+                      <span key={label} className={label === latestAssessment.voiceAnalysis.creativity_class ? "predicted" : ""}>
+                        <b>{label}</b><i><em style={{ width: `${Math.round(probability * 100)}%` }} /></i><small>{Math.round(probability * 100)}%</small>
+                      </span>
                     ))}
                   </div>
-                  <small className="creativity-voice-model-caveat">AI estimates are experimental and require teacher review. No story audio is retained by the prediction service.</small>
+                  <small className="creativity-voice-model-caveat">Model confidence: {Math.round(latestAssessment.voiceAnalysis.model_score * 100)}%. AI output is experimental and requires teacher review; audio is not retained by the prediction service.</small>
                 </>
-              ) : voiceAnalysisError ? (
-                <p role="status">The assessment was saved, but voice analysis was unavailable: {voiceAnalysisError}</p>
+              ) : latestAssessment.voiceAnalysisError ? (
+                <p role="status">The assessment was saved, but WavLM voice analysis was unavailable: {latestAssessment.voiceAnalysisError}</p>
               ) : (
                 <p>No voice recording was analyzed. Typed stories are reviewed using the teacher’s rubric.</p>
               )}
@@ -867,7 +883,7 @@ export function CreativityLab({
           )}
           {latestAssessment.activity !== "Storytelling" && !latestAssessment.voiceRecorded && (
             <Card className="creativity-voice-model-result">
-              <div className="creativity-voice-model-heading"><span className="creativity-step-label">OPTIONAL VOICE REFLECTION · RANDOM FOREST</span></div>
+              <div className="creativity-voice-model-heading"><span className="creativity-step-label">OPTIONAL VOICE REFLECTION · WAVLM</span></div>
               <p>No voice recording was added. The image model and teacher rubric still apply independently.</p>
             </Card>
           )}
@@ -928,13 +944,12 @@ function ModelObservationPanel({
   onAnalyze,
 }) {
   const imageScores = imageAnalysis?.scores;
-  const voiceScores = voiceAnalysis?.scores;
   return (
-    <section className="creativity-model-observations" aria-live="polite" aria-label="AI model observations">
+    <Card as="section" className="creativity-model-observations" aria-live="polite" aria-label="AI model analysis">
       <div className="creativity-model-observations-heading">
         <div>
-          <span className="creativity-step-label">MODEL-ASSISTED OBSERVATION</span>
-          <p>Analyze the picture with the image Random Forest and any recording with the voice Random Forest Regressor. Review the suggestions before setting teacher scores.</p>
+          <span className="creativity-step-label">AI MODEL ANALYSIS · SEPARATE FROM TEACHER OBSERVATION</span>
+          <p>ResNet18 analyzes the picture and WavLM classifies recorded voice. Review these AI results separately before setting teacher scores.</p>
         </div>
         <Button variant="secondary" size="small" onClick={onAnalyze} disabled={!canAnalyze || analyzing}>
           {analyzing ? "Analyzing…" : "Analyze media"}
@@ -943,7 +958,7 @@ function ModelObservationPanel({
       <div className="creativity-model-observations-results">
         {activityId !== "story" && (
           <div className="creativity-model-observation">
-            <strong>Picture · Random Forest</strong>
+            <strong>Picture · ResNet18</strong>
             {imageScores ? (
               <div className="creativity-model-observation-scores">
                 {Object.entries(imageScores).map(([target, value]) => (
@@ -956,27 +971,26 @@ function ModelObservationPanel({
           </div>
         )}
         <div className="creativity-model-observation voice">
-          <strong>Voice · Random Forest Regressor</strong>
-          {voiceScores ? (
-            <div className="creativity-model-observation-scores">
-              {Object.entries(voiceScores).map(([target, value]) => (
-                <span key={target}>{target.replace(/_1_5$/, "").replaceAll("_", " ")} <b>{value.toFixed(1)}/5</b></span>
-              ))}
+          <strong>Voice · WavLM classification</strong>
+          {voiceAnalysis ? (
+            <div className="creativity-model-observation-classification">
+              <b>Prediction: {voiceAnalysis.creativity_class}</b>
+              <span>{Math.round(voiceAnalysis.model_score * 100)}% model confidence</span>
             </div>
           ) : (
-            <small>{voiceAnalysisError || "Record the learner’s voice, then select Analyze media for vocal-delivery suggestions."}</small>
+            <small>{voiceAnalysisError || "Record the learner’s voice, then select Analyze media for WavLM classification."}</small>
           )}
         </div>
       </div>
-      <small className="creativity-model-observations-note">AI estimates are suggestions only. They never change rubric scores automatically; matching image estimates can be applied with the AI buttons in the teacher rubric.</small>
-    </section>
+      <small className="creativity-model-observations-note">AI output is experimental and never changes teacher rubric scores automatically. ResNet18 image suggestions may be applied manually using the AI buttons in the separate teacher rubric.</small>
+    </Card>
   );
 }
 
 function RubricEditor({ scores, onChange, imageSuggestions }) {
   return (
     <fieldset className="creativity-rubric">
-      <legend>TEACHER OBSERVATION <span>1 = emerging · 5 = flourishing</span></legend>
+      <legend>TEACHER OBSERVATION <span>Type a whole number from 1 to 5</span></legend>
       {rubric.map((item) => (
         <div className="creativity-rubric-row" key={item.id}>
           <label htmlFor={`rubric-${item.id}`}><span>{item.icon}</span><span><strong>{item.label}</strong><small>{item.hint}</small></span></label>
@@ -985,14 +999,27 @@ function RubricEditor({ scores, onChange, imageSuggestions }) {
               type="button"
               className="creativity-use-image-suggestion"
               onClick={() => onChange((current) => ({ ...current, [item.id]: Math.max(1, Math.min(5, Math.round(imageSuggestions[item.id]))) }))}
-              aria-label={`Use Random Forest image estimate ${imageSuggestions[item.id].toFixed(1)} for ${item.label}`}
+              aria-label={`Use ResNet18 image estimate ${imageSuggestions[item.id].toFixed(1)} for ${item.label}`}
             >
               AI {imageSuggestions[item.id].toFixed(1)}
             </button>
           )}
-          <select id={`rubric-${item.id}`} value={scores[item.id]} onChange={(event) => onChange((current) => ({ ...current, [item.id]: Number(event.target.value) }))} aria-label={`${item.label} score out of five`}>
-            {[1, 2, 3, 4, 5].map((score) => <option value={score} key={score}>{score}/5</option>)}
-          </select>
+          <input
+            id={`rubric-${item.id}`}
+            type="number"
+            min="1"
+            max="5"
+            step="1"
+            required
+            inputMode="numeric"
+            value={scores[item.id] ?? ""}
+            onChange={(event) => {
+              const value = event.target.value;
+              onChange((current) => ({ ...current, [item.id]: value === "" ? "" : Number(value) }));
+            }}
+            aria-label={`${item.label} score out of five`}
+            aria-invalid={!Number.isInteger(scores[item.id]) || scores[item.id] < 1 || scores[item.id] > 5}
+          />
         </div>
       ))}
     </fieldset>

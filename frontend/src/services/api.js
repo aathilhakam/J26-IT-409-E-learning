@@ -1,5 +1,5 @@
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
-const VOICE_API_BASE = import.meta.env.VITE_VOICE_API_URL || "/voice-ai";
+const WAVLM_API_BASE = import.meta.env.VITE_WAVLM_API_URL || "/ai";
 const IMAGE_API_BASE = import.meta.env.VITE_IMAGE_API_URL || "/image-ai";
 let csrfToken;
 
@@ -52,11 +52,11 @@ async function requestBlob(path) {
   return response.blob();
 }
 
-async function requestVoicePrediction(file) {
+async function requestWavlmPrediction(file) {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${VOICE_API_BASE}/predict/voice`, {
+  const response = await fetch(`${WAVLM_API_BASE}/predict/voice`, {
     method: "POST",
     body: formData,
     headers: { Accept: "application/json" },
@@ -71,20 +71,29 @@ async function requestVoicePrediction(file) {
     throw new Error(message);
   }
   const result = await response.json();
+  const classScores = result?.class_scores;
+  const probabilities = classScores && typeof classScores === "object"
+    ? Object.values(classScores)
+    : [];
   if (
     typeof result !== "object" ||
     result === null ||
-    result.model !== "Random Forest Regressor" ||
-    typeof result.average_score !== "number" ||
-    !Number.isFinite(result.average_score) ||
-    typeof result.scores !== "object" ||
-    result.scores === null ||
-    Object.values(result.scores).length !== 6 ||
-    Object.values(result.scores).some(
-      (score) => typeof score !== "number" || !Number.isFinite(score) || score < 1 || score > 5,
-    )
+    result.model !== "WavLM-Base" ||
+    typeof result.creativity_class !== "string" ||
+    typeof result.model_score !== "number" ||
+    !Number.isFinite(result.model_score) ||
+    result.model_score < 0 ||
+    result.model_score > 1 ||
+    !classScores ||
+    Object.keys(classScores).length !== 3 ||
+    !(result.creativity_class in classScores) ||
+    probabilities.some(
+      (score) => typeof score !== "number" || !Number.isFinite(score) || score < 0 || score > 1,
+    ) ||
+    Math.abs(probabilities.reduce((sum, score) => sum + score, 0) - 1) > 0.02 ||
+    Math.abs(classScores[result.creativity_class] - result.model_score) > 0.001
   ) {
-    throw new Error("The voice model returned an invalid prediction response.");
+    throw new Error("The WavLM voice model returned an invalid prediction response.");
   }
   return result;
 }
@@ -118,7 +127,7 @@ async function requestImagePrediction(file) {
   if (
     typeof result !== "object" ||
     result === null ||
-    result.model !== "Random Forest Image Regressor" ||
+    result.model !== "ResNet18 Image Model" ||
     typeof result.average_score !== "number" ||
     !Number.isFinite(result.average_score) ||
     typeof result.scores !== "object" ||
@@ -180,7 +189,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify(record),
     }),
-  analyzeVoice: (file) => requestVoicePrediction(file),
+  analyzeVoice: (file) => requestWavlmPrediction(file),
   analyzeImage: (file) => requestImagePrediction(file),
   recommendations: (studentId) =>
     request(`/students/${studentId}/recommendations`),

@@ -47,30 +47,23 @@ npm run dev
 
 Open the Vite URL shown in the terminal (normally `http://localhost:5173`). Vite proxies `/api` requests to Spring Boot at `http://localhost:8080`.
 
-To enable recorded-story analysis using the trained Random Forest regressor, start its voice service in a third terminal. The `voice_random_forest.joblib` model must be present under `ai-service/models`:
+To enable recorded voice analysis, start the WavLM classifier from `ai-service`. The `voice_wavlm_classifier.pth` checkpoint and `voice_wavlm_scaler.joblib` must be present under `ai-service/models`:
 
 ```sh
 cd ai-service
-uvicorn src.voice_random_forest_api:app --host 127.0.0.1 --port 8002
+uvicorn src.voice_wavlm_api:app --host 127.0.0.1 --port 8000
 ```
 
-The frontend proxies `/voice-ai` to this service. Set `VITE_VOICE_API_URL` to a different API base when deploying. Story recordings are converted to mono 16 kHz WAV and limited to 60 seconds for analysis. The model estimates six 1–5 vocal-delivery dimensions (expressiveness, fluency, rhythm, vocal variety, engagement, and naturalness); it does not transcribe speech or grade story creativity. These experimental estimates require teacher review and do not replace the teacher-entered creativity rubric.
+The frontend proxies `/ai` to this service. Set `VITE_WAVLM_API_URL` to a different API base when deploying. Recordings are converted to mono 16 kHz WAV and limited to 60 seconds. WavLM predicts one of three broad classes (Weak, Moderate, or High) and returns class probabilities; it does not produce rubric scores or transcribe speech. Predictions are experimental and are displayed separately from the teacher-entered observation rubric.
 
-To train the image Random Forest on the teacher-rated images and start the image analysis service, run these commands from `ai-service`:
+To enable image analysis with the trained ResNet18 model, start the image service from `ai-service`. The `resnet18_scratch.pth` checkpoint and its evaluation report must be present under `ai-service/models` and `ai-service/results`:
 
 ```sh
 cd ai-service
-python src/train_image_random_forest.py
 uvicorn src.image_creativity_api:app --host 127.0.0.1 --port 8003
 ```
 
-Training uses `data/splits/train.csv` and `val.csv` for the labeled image features and holds `test.csv` aside for evaluation; the script checks the student-level splits and reports the test MAE against a training-mean baseline before saving `models/image_random_forest.joblib`. The frontend proxies `/image-ai` to this service. Set `VITE_IMAGE_API_URL` to a different API base when deploying. On drawing activities, the image Random Forest estimates the five teacher-scored visual creativity dimensions; teachers can also record an optional explanation for the separate voice Random Forest. The image is processed in memory; the voice service temporarily writes its audio input and removes it after inference. Neither service retains media after analysis. Both models provide experimental estimates that require teacher review, and their scores are never merged; the teacher-entered rubric remains authoritative.
-
-The WavLM service is optional and separate; start it only when explicitly using the WavLM classifier:
-
-```sh
-uvicorn src.voice_wavlm_api:app --host 127.0.0.1 --port 8000
-```
+The frontend proxies `/image-ai` to this service. Set `VITE_IMAGE_API_URL` to a different API base when deploying. On drawing activities, ResNet18 estimates five visual dimensions on a 1–5 scale. Image and audio are processed separately and are not retained after analysis. The model outputs are experimental suggestions; teachers review them independently, and the teacher-entered rubric remains authoritative.
 
 To point the frontend at a deployed API, set `VITE_API_URL` to the API base path (for example, `https://example.test/api`) before building. Configure the backend's allowed browser origin in `backend/src/main/java/lk/smartplay/adaptive/config/WebConfig.java` for non-local deployments.
 

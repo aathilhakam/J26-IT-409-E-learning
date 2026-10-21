@@ -2802,9 +2802,13 @@ select:focus-visible { outline-color: #525252; }
   .creativity-rubric-row > label > span:last-child { display: grid; gap: 1px; }
   .creativity-rubric-row strong { color: #3d4e63; font-size: 9px; }
   .creativity-rubric-row small { color: #8b96a5; font-size: 7px; }
-  .creativity-rubric-row select { padding: 5px 6px; border: 1px solid #e3e9f1; border-radius: 7px; color: #375caa; background: #fff; font: inherit; font-size: 9px; font-weight: 700; }
+  .creativity-rubric-row input[type="number"] { width: 58px; padding: 5px 6px; border: 1px solid #e3e9f1; border-radius: 7px; color: #375caa; background: #fff; font: inherit; font-size: 10px; font-weight: 700; text-align: center; }
+  .creativity-rubric-row input[type="number"][aria-invalid="true"] { border-color: #d47b70; }
   .creativity-use-image-suggestion { padding: 5px 6px; border: 1px solid #cfe3da; border-radius: 7px; color: #367354; background: #f3fbf6; font: inherit; font-size: 8px; font-weight: 750; cursor: pointer; }
   .creativity-use-image-suggestion:hover { background: #e4f5eb; }
+  .creativity-teacher-observation-card { display: grid; gap: 7px; padding: 11px; border: 1px solid #e5eaf1; border-radius: 10px; background: #fff; }
+  .creativity-teacher-observation-card > h3 { margin: 0; color: #3d4e63; font-size: 10px; }
+  .creativity-teacher-observation-card > p { margin: 0; color: #8490a0; font-size: 8px; line-height: 1.4; }
   .creativity-model-observations { display: grid; gap: 10px; padding: 11px; border: 1px solid #dce8f4; border-radius: 10px; background: #f8fbff; }
   .creativity-model-observations-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .creativity-model-observations-heading > div { display: grid; gap: 4px; }
@@ -2817,6 +2821,9 @@ select:focus-visible { outline-color: #525252; }
   .creativity-model-observation-scores { display: flex; flex-wrap: wrap; gap: 5px; }
   .creativity-model-observation-scores > span { display: inline-flex; gap: 4px; padding: 4px 6px; border-radius: 6px; color: #507360; background: #e7f4ec; font-size: 8px; text-transform: capitalize; }
   .creativity-model-observation.voice .creativity-model-observation-scores > span { color: #776440; background: #f7eedb; }
+  .creativity-model-observation-classification { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .creativity-model-observation-classification > b { padding: 4px 7px; border-radius: 6px; color: #776440; background: #f7eedb; font-size: 9px; }
+  .creativity-model-observation-classification > span { color: #887d68; font-size: 8px; }
   .creativity-model-observations-note { color: #8490a0; font-size: 8px; line-height: 1.4; }
   .creativity-submit { min-height: 41px; width: 100%; }
   .creativity-next-note { color: #8390a0; font-size: 8px; line-height: 1.4; text-align: center; }
@@ -2874,6 +2881,12 @@ select:focus-visible { outline-color: #525252; }
   .creativity-voice-model-scores em { display: block; height: 100%; border-radius: inherit; background: #c49a4a; }
   .creativity-voice-model-scores small, .creativity-voice-model-caveat { color: #887d68; font-size: 8px; }
   .creativity-voice-model-caveat { line-height: 1.4; }
+  .creativity-wavlm-class-scores { display: grid; gap: 8px; }
+  .creativity-wavlm-class-scores > span { display: grid; grid-template-columns: minmax(55px, auto) minmax(20px, 1fr) auto; align-items: center; gap: 8px; color: #6f6248; font-size: 9px; }
+  .creativity-wavlm-class-scores > span.predicted { font-weight: 800; }
+  .creativity-wavlm-class-scores i { height: 6px; overflow: hidden; border-radius: 999px; background: #eee5d4; }
+  .creativity-wavlm-class-scores em { display: block; height: 100%; border-radius: inherit; background: #c49a4a; }
+  .creativity-wavlm-class-scores small { color: #887d68; font-size: 8px; }
   .creativity-result-gauge { display: grid; width: 144px; height: 144px; justify-self: center; align-content: center; justify-items: center; gap: 4px; border: 11px solid #4378db; border-radius: 50%; color: #3264c3; background: #fff; box-shadow: 0 0 0 9px rgb(232 239 255 / 75%); }
   .creativity-result-gauge > strong { font-size: 34px; line-height: 1; }
   .creativity-result-gauge > span { color: #718095; font-size: 8px; font-weight: 800; letter-spacing: .5px; text-align: center; }
