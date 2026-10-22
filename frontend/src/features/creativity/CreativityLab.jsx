@@ -379,8 +379,10 @@ export function CreativityLab({
             const imageFile = uploadedFile || await getDrawingImageFile(canvasRef.current);
             setImageAnalysis(await api.analyzeImage(imageFile));
           } catch (cause) {
+            const msg = cause instanceof Error ? cause.message : "Image analysis could not be completed.";
             setImageAnalysis(null);
-            setImageAnalysisError(cause instanceof Error ? cause.message : "Image analysis could not be completed.");
+            setImageAnalysisError(msg);
+            setError(msg);
           }
         })(),
       );
@@ -468,6 +470,7 @@ export function CreativityLab({
           imageAnalysisResult = await api.analyzeImage(imageFile);
         } catch (cause) {
           imageAnalysisError = cause instanceof Error ? cause.message : "Image analysis could not be completed.";
+          setError(imageAnalysisError);
         }
       }
       if (activityId !== "story" && imageAnalysisResult) {

@@ -123,7 +123,7 @@ async function requestImagePrediction(file) {
       typeof payload === "object" && payload !== null && "detail" in payload
         ? String(payload.detail)
         : response.status >= 500
-          ? `Image analysis service error (${response.status}). Make sure the image service is running on port 8003 and check its terminal for details.`
+          ? `Image analysis service returned an internal error (${response.status}). Check the image service logs for details.`
           : `Image analysis failed (${response.status})`;
     throw new Error(message);
   }

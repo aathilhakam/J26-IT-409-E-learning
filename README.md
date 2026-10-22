@@ -57,13 +57,7 @@ The frontend proxies `/ai` to this service; set `VITE_WAVLM_API_URL` to a differ
 
 The classroom voice-analysis path now uses WavLM; the separate Custom 1D CNN experiment and its saved files are left untouched.
 
-To enable image analysis with the trained ResNet18 model, start the image service from the repository root. The `resnet18_scratch.pth` checkpoint and its evaluation report must be present under `ai-service/models` and `ai-service/results`:
-
-```powershell
-.\.venv\Scripts\python.exe -m uvicorn src.image_creativity_api:app --app-dir .\ai-service --host 127.0.0.1 --port 8003
-```
-
-The frontend proxies `/image-ai` to this service. Set `VITE_IMAGE_API_URL` to a different API base when deploying. On drawing activities, ResNet18 estimates five visual dimensions on a 1–5 scale. Image and audio are processed separately and are not retained after analysis. The model outputs are experimental suggestions; teachers review them independently, and the teacher-entered rubric remains authoritative.
+Image analysis with the trained ResNet18 model starts automatically when you run the frontend's `npm run dev` command. The Vite development server launches the local Python service, waits for its health check, and stops it when Vite shuts down. The `resnet18_scratch.pth` checkpoint and its evaluation report must be present under `ai-service/models` and `ai-service/results`; the repository `.venv` must have the dependencies in `ai-service/requirements.txt` installed. If the service fails to start, its output and startup error are shown in the frontend terminal. The frontend proxies `/image-ai` to the service on port 8003. Set `VITE_IMAGE_API_URL` to a different API base when deploying; deployment environments must run and manage the image service separately. On drawing activities, ResNet18 estimates five visual dimensions on a 1–5 scale. Image and audio are processed separately and are not retained after analysis. The model outputs are experimental suggestions; teachers review them independently, and the teacher-entered rubric remains authoritative.
 
 To point the frontend at a deployed API, set `VITE_API_URL` to the API base path (for example, `https://example.test/api`) before building. Configure the backend's allowed browser origin in `backend/src/main/java/lk/smartplay/adaptive/config/WebConfig.java` for non-local deployments.
 
