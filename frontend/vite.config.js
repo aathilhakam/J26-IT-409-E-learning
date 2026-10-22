@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 import { defineConfig, loadEnv } from "vite";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const imageServiceUrl = "http://127.0.0.1:8003";
+const imageServicePort = process.env.SMARTPLAY_IMAGE_SERVICE_PORT || "8003";
+const imageServiceUrl = `http://127.0.0.1:${imageServicePort}`;
 const imageServiceHealthUrl = `${imageServiceUrl}/health`;
 const imageServiceStartupTimeoutMs = 120_000;
 
@@ -41,7 +42,8 @@ function imageServicePlugin(imageApiBase) {
         });
         if (response.ok) {
           const health = await response.json();
-          if (health.status === "running" && health.model === "ResNet18") {
+          if (["running", "degraded"].includes(health.status) && health.model === "ResNet18" && health.colour_analysis_available) {
+            if (health.prediction_error) console.warn(health.prediction_error);
             return;
           }
           lastError = new Error("The service health response did not identify the ResNet18 model.");
@@ -74,8 +76,12 @@ function imageServicePlugin(imageApiBase) {
         }).catch(() => null);
         if (existingResponse?.ok) {
           const health = await existingResponse.json();
-          if (health.status === "running" && health.model === "ResNet18") {
-            server.config.logger.info("Using the existing ResNet18 image service on port 8003.");
+          if (["running", "degraded"].includes(health.status) && health.model === "ResNet18") {
+            if (!health.colour_analysis_available) {
+              throw new Error(`An older image service is running on port ${imageServicePort}. Stop that Python service and restart npm run dev to load colour analysis. You can also set SMARTPLAY_IMAGE_SERVICE_PORT to a free port.`);
+            }
+            if (health.prediction_error) server.config.logger.warn(health.prediction_error);
+            server.config.logger.info(`Using the existing ResNet18 image service on port ${imageServicePort}.`);
             return;
           }
         }
@@ -100,7 +106,7 @@ function imageServicePlugin(imageApiBase) {
             "--host",
             "127.0.0.1",
             "--port",
-            "8003",
+            imageServicePort,
           ],
           { cwd: projectRoot, stdio: "inherit", windowsHide: true },
         );
@@ -116,7 +122,7 @@ function imageServicePlugin(imageApiBase) {
         });
 
         await waitForImageService();
-        server.config.logger.info("ResNet18 image service is ready on port 8003.");
+        server.config.logger.info(`Image service is ready on port ${imageServicePort}.`);
         server.httpServer?.once("close", stopImageService);
       } catch (error) {
         stopImageService();
@@ -144,7 +150,7 @@ export default defineConfig(({ mode }) => {
           rewrite: (path) => path.replace(/^\/voice-ai/, ""),
         },
         "/image-ai": {
-          target: "http://127.0.0.1:8003",
+          target: imageServiceUrl,
           rewrite: (path) => path.replace(/^\/image-ai/, ""),
         },
       },

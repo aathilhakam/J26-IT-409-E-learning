@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -51,15 +52,37 @@ public class StudentService {
 
     public LearningRecord addRecord(String studentId, CreateLearningRecordRequest request, String ownerId) {
         findById(studentId, ownerId);
-        if (request.score() > request.maxScore()) {
+        if (!Double.isFinite(request.score()) || !Double.isFinite(request.maxScore())
+                || request.score() > request.maxScore()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Score cannot exceed the maximum score");
         }
-        return recordRepository.save(new LearningRecord(
+        var assessment = request.creativityAssessment();
+        if (assessment != null) {
+            var scores = assessment.teacherScores();
+            if (!"creativity".equalsIgnoreCase(request.domain().trim())
+                    || !Integer.valueOf(10).equals(assessment.teacherScoreScale())
+                    || request.maxScore() != 10.0
+                    || scores == null
+                    || !scores.keySet().equals(Set.of("originality", "imagination", "elaboration", "storytelling"))
+                    || scores.values().stream().anyMatch(value -> value == null || !Double.isFinite(value)
+                            || value < 1 || value > 10 || value != Math.rint(value))) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Teacher observation requires all four whole-number scores from 1 to 10 and scale 10");
+            }
+            double average = scores.values().stream().mapToDouble(Double::doubleValue).average().orElseThrow();
+            if (Math.abs(request.score() - average) > 0.000001) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Creativity score must equal the teacher rubric average");
+            }
+        }
+        LearningRecord record = new LearningRecord(
                 studentId,
                 request.domain().trim(),
                 request.score(),
                 request.maxScore(),
-                request.notes() == null ? "" : request.notes().trim()));
+                request.notes() == null ? "" : request.notes().trim());
+        record.setCreativityAssessment(assessment);
+        return recordRepository.save(record);
     }
 
     public StudentProfileResponse profile(String studentId, String ownerId) {

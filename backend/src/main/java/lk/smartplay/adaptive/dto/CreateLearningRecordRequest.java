@@ -3,10 +3,15 @@ package lk.smartplay.adaptive.dto;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lk.smartplay.adaptive.model.CreativityAssessment;
 
 public record CreateLearningRecordRequest(
         @NotBlank(message = "Learning area is required") String domain,
         @NotNull @DecimalMin(value = "0.0", inclusive = true) Double score,
         @NotNull @DecimalMin(value = "0.1", inclusive = true) Double maxScore,
-        String notes) {
+        String notes,
+        CreativityAssessment creativityAssessment) {
+    public CreateLearningRecordRequest(String domain, Double score, Double maxScore, String notes) {
+        this(domain, score, maxScore, notes, null);
+    }
 }

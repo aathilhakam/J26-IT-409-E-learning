@@ -15,6 +15,7 @@ public class LearningRecord {
     private double maxScore;
     private String notes;
     private Instant assessedAt;
+    private CreativityAssessment creativityAssessment;
 
     public LearningRecord() {
     }
@@ -54,5 +55,13 @@ public class LearningRecord {
 
     public Instant getAssessedAt() {
         return assessedAt;
+    }
+
+    public CreativityAssessment getCreativityAssessment() {
+        return creativityAssessment;
+    }
+
+    public void setCreativityAssessment(CreativityAssessment creativityAssessment) {
+        this.creativityAssessment = creativityAssessment;
     }
 }

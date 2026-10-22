@@ -307,15 +307,16 @@ function App() {
     }
   }
 
-  async function handleCreativityRecord({ score, notes }) {
+  async function handleCreativityRecord({ score, notes, creativityAssessment }) {
     if (!activeId) throw new Error("Select a learner before saving a creativity assessment.");
     setError("");
     try {
       const createdRecord = await api.addRecord(activeId, {
         domain: "Creativity",
         score,
-        maxScore: 5,
+        maxScore: 10,
         notes,
+        creativityAssessment,
       });
       await loadLearnerData(activeId);
       return createdRecord;

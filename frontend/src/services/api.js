@@ -135,22 +135,33 @@ async function requestImagePrediction(file) {
     "detail",
     "visual_organization",
   ];
+  if (result && !result.colour_analysis) {
+    throw new Error("The image service returned an older response without colour analysis. Restart the Python image service and the frontend to load the updated API.");
+  }
   if (
     typeof result !== "object" ||
     result === null ||
     result.model !== "ResNet18 Image Model" ||
-    typeof result.average_score !== "number" ||
+    (result.scores === null
+      ? !result.prediction_error || result.average_score !== null
+      : typeof result.average_score !== "number" ||
     !Number.isFinite(result.average_score) ||
     typeof result.scores !== "object" ||
-    result.scores === null ||
-    Object.keys(result.scores).length !== expectedTargets.length ||
+    Object.keys(result.scores ?? {}).length !== expectedTargets.length ||
     expectedTargets.some(
       (target) =>
         typeof result.scores[target] !== "number" ||
         !Number.isFinite(result.scores[target]) ||
         result.scores[target] < 1 ||
         result.scores[target] > 5,
-    )
+    )) ||
+    !result.colour_analysis ||
+    !Array.isArray(result.colour_analysis.colours) ||
+    result.colour_analysis.category_count !== result.colour_analysis.colours.length ||
+    result.colour_analysis.colours.some((colour) =>
+      typeof colour.name !== "string" || !/^#[0-9a-f]{6}$/i.test(colour.hex) ||
+      typeof colour.percentage !== "number" || !Number.isFinite(colour.percentage) ||
+      colour.percentage < 0 || colour.percentage > 100)
   ) {
     throw new Error("The image model returned an invalid prediction response.");
   }

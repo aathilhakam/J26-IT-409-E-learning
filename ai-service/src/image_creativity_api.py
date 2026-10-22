@@ -1,12 +1,14 @@
 from io import BytesIO
 import json
+import logging
 from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 import numpy as np
 import torch
 from torch import nn
+from .colour_analysis import analyse_colours
 
 
 
@@ -101,20 +103,26 @@ class ResNet18Creativity(nn.Module):
         return self.fc(torch.flatten(outputs, 1))
 
 
-if not MODEL_PATH.is_file():
-    raise FileNotFoundError(f"ResNet18 image model not found: {MODEL_PATH}")
-if not METRICS_PATH.is_file():
-    raise FileNotFoundError(f"ResNet18 evaluation metrics not found: {METRICS_PATH}")
-
+logger = logging.getLogger("smartplay.image")
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = ResNet18Creativity(len(EXPECTED_TARGETS)).to(DEVICE)
-model.load_state_dict(
-    torch.load(MODEL_PATH, map_location=DEVICE, weights_only=True),
-    strict=True,
-)
-model.eval()
-with METRICS_PATH.open(encoding="utf-8") as metrics_file:
-    METRICS = json.load(metrics_file)
+model = None
+MODEL_ERROR = None
+METRICS = {}
+try:
+    if not MODEL_PATH.is_file():
+        raise FileNotFoundError(f"ResNet18 image model not found: {MODEL_PATH}")
+    loaded_model = ResNet18Creativity(len(EXPECTED_TARGETS)).to(DEVICE)
+    loaded_model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE, weights_only=True), strict=True)
+    loaded_model.eval()
+    model = loaded_model
+except Exception:
+    logger.exception("Cannot load configured ResNet18 checkpoint: %s", MODEL_PATH)
+    MODEL_ERROR = "Configured ResNet18 checkpoint could not be loaded. Check the image service startup log and ai-service/models/resnet18_scratch.pth; restart after fixing it."
+try:
+    with METRICS_PATH.open(encoding="utf-8") as metrics_file:
+        METRICS = json.load(metrics_file)
+except (OSError, ValueError):
+    logger.exception("Evaluation report unavailable: %s", METRICS_PATH)
 
 app = FastAPI(title="SmartPlay ResNet18 Image API", version="1.0")
 
@@ -122,7 +130,9 @@ app = FastAPI(title="SmartPlay ResNet18 Image API", version="1.0")
 @app.get("/health")
 def health():
     return {
-        "status": "running",
+        "status": "running" if model is not None else "degraded",
+        "prediction_error": MODEL_ERROR,
+        "colour_analysis_available": True,
         "model": "ResNet18",
         "targets": EXPECTED_TARGETS,
         "test_mae": METRICS.get("test_mae"),
@@ -130,9 +140,9 @@ def health():
 
 
 @app.post("/predict/image")
-async def predict_image(file: UploadFile = File(...)):
+def predict_image(file: UploadFile = File(...)):
     try:
-        contents = await file.read(MAX_IMAGE_BYTES + 1)
+        contents = file.file.read(MAX_IMAGE_BYTES + 1)
         if len(contents) > MAX_IMAGE_BYTES:
             raise HTTPException(status_code=413, detail="Image exceeds 15 MB.")
         if not contents:
@@ -141,7 +151,10 @@ async def predict_image(file: UploadFile = File(...)):
         with Image.open(BytesIO(contents)) as source:
             if source.width * source.height > MAX_IMAGE_PIXELS:
                 raise HTTPException(status_code=400, detail="Image dimensions are too large.")
-            image = source.convert("RGB").resize(
+            artwork = ImageOps.exif_transpose(source).convert("RGBA")
+            # Transparent drawing exports should have white paper for inference.
+            white_paper = Image.new("RGBA", artwork.size, "white")
+            image = Image.alpha_composite(white_paper, artwork).convert("RGB").resize(
                 (IMAGE_SIZE, IMAGE_SIZE),
                 Image.Resampling.BILINEAR,
             )
@@ -150,26 +163,33 @@ async def predict_image(file: UploadFile = File(...)):
     except (Image.DecompressionBombError, UnidentifiedImageError, OSError, ValueError) as exc:
         raise HTTPException(status_code=400, detail="The uploaded file is not a supported image.") from exc
     finally:
-        await file.close()
+        file.file.close()
 
+    colour_analysis = analyse_colours(artwork)
+    prediction_error = MODEL_ERROR
+    scores = None
     pixels = np.asarray(image, dtype=np.float32) / 255.0
     tensor = torch.from_numpy(pixels.transpose(2, 0, 1).copy())
-    tensor = ((tensor - 0.5) / 0.5).unsqueeze(0).to(DEVICE)
-    with torch.inference_mode():
-        predictions = np.clip(
-            model(tensor)[0].cpu().numpy(),
-            1.0,
-            5.0,
-        )
-
-    scores = {
-        target: round(float(score), 3)
-        for target, score in zip(EXPECTED_TARGETS, predictions, strict=True)
-    }
+    tensor = ((tensor - 0.5) / 0.5).unsqueeze(0)
+    if model is not None:
+        try:
+            tensor = tensor.to(DEVICE)
+            with torch.inference_mode():
+                predictions = np.clip(model(tensor)[0].cpu().numpy(), 1.0, 5.0)
+            if predictions.shape != (len(EXPECTED_TARGETS),) or not np.isfinite(predictions).all():
+                raise ValueError("Model returned non-finite scores or an unexpected output shape")
+            scores = {target: round(float(score), 3)
+                      for target, score in zip(EXPECTED_TARGETS, predictions, strict=True)}
+        except Exception:
+            logger.exception("ResNet18 prediction failed (input shape %s)", tuple(tensor.shape))
+            prediction_error = "ResNet18 prediction failed. Colour analysis completed; inspect the image service traceback for the cause."
     return {
         "model": "ResNet18 Image Model",
         "scores": scores,
-        "average_score": round(sum(scores.values()) / len(scores), 3),
+        "average_score": round(sum(scores.values()) / len(scores), 3) if scores else None,
+        "score_scale": 5,
+        "prediction_error": prediction_error,
+        "colour_analysis": colour_analysis,
         "teacher_validation": "Pending",
         "message": "Experimental ResNet18 image estimates trained on teacher-scored drawings; teacher review is required.",
         "test_mae": METRICS.get("test_mae"),

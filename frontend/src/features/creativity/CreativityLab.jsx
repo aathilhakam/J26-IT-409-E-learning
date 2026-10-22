@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar, Button, Card } from "../../components";
 import { api } from "../../services/api";
+import { assessmentFromRecord, emptyTeacherScores, validTeacherScore } from "./assessment";
 
 const MAX_RECORDING_SECONDS = 60;
 
@@ -99,7 +100,7 @@ export function CreativityLab({
 }) {
   const [view, setView] = useState("overview");
   const [activityId, setActivityId] = useState("coloring");
-  const [rubricScores, setRubricScores] = useState(() => Object.fromEntries(rubric.map((item) => [item.id, 3])));
+  const [rubricScores, setRubricScores] = useState(() => emptyTeacherScores());
   const [drawingColor, setDrawingColor] = useState("#3166c5");
   const [hasDrawing, setHasDrawing] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
@@ -129,25 +130,7 @@ export function CreativityLab({
   const activeRecordIds = new Set(activeAssessments.map((assessment) => assessment.recordId).filter(Boolean));
   const savedAssessments = records
     .filter((record) => record.domain?.toLowerCase() === "creativity" && !activeRecordIds.has(record.id))
-    .map((record) => {
-      const score = Math.max(1, Math.min(5, Math.round((record.score / record.maxScore) * 5)));
-      const savedRubric = Object.fromEntries(rubric.map((item) => {
-        const match = record.notes?.match(new RegExp(`${item.label}\\s+(\\d)\\/5`));
-        return [item.id, match ? Number(match[1]) : score];
-      }));
-      return {
-        id: record.id,
-        studentId: activeStudentId,
-        studentName: activeStudent?.name ?? "",
-        activity: "Creativity assessment",
-        prompt: record.notes || "Creativity observation",
-        percentage: Math.round((record.score / record.maxScore) * 100),
-        score: record.score,
-        rubric: savedRubric,
-        notes: record.notes || "Creativity progress recorded.",
-        completedAt: record.assessedAt,
-      };
-    });
+    .map((record) => assessmentFromRecord(record, activeStudent));
   const studentAssessments = [...activeAssessments, ...savedAssessments]
     .sort((first, second) => new Date(second.completedAt) - new Date(first.completedAt));
   const savedScore = averageScore(records);
@@ -205,9 +188,10 @@ export function CreativityLab({
   }, [uploadedFile]);
 
   function beginActivity(id) {
+    if (submitting || analyzingModels) return;
     if (recording) stopRecording();
     setActivityId(id);
-    setRubricScores(Object.fromEntries(rubric.map((item) => [item.id, 3])));
+    setRubricScores(emptyTeacherScores());
     setHasDrawing(false);
     setUploadedFile(null);
     setStoryText("");
@@ -223,6 +207,7 @@ export function CreativityLab({
   }
 
   function clearCanvas() {
+    if (submitting || analyzingModels) return;
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
     if (!canvas || !context) return;
@@ -235,6 +220,7 @@ export function CreativityLab({
   }
 
   function draw(event) {
+    if (submitting || analyzingModels) return;
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
     if (!canvas || !context || !drawingRef.current) return;
@@ -251,6 +237,7 @@ export function CreativityLab({
   }
 
   function startDrawing(event) {
+    if (submitting || analyzingModels) return;
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
     if (!canvas || !context) return;
@@ -270,6 +257,7 @@ export function CreativityLab({
   }
 
   function chooseFile(event) {
+    if (submitting || analyzingModels) return;
     const file = event.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -289,6 +277,7 @@ export function CreativityLab({
   }
 
   function removeUploadedFile() {
+    if (submitting || analyzingModels) return;
     setUploadedFile(null);
     setImageAnalysis(null);
     setImageAnalysisError("");
@@ -421,8 +410,8 @@ export function CreativityLab({
       return;
     }
 
-    if (rubric.some((item) => !Number.isInteger(rubricScores[item.id]) || rubricScores[item.id] < 1 || rubricScores[item.id] > 5)) {
-      setError("Enter a whole-number teacher observation score from 1 to 5 for every category.");
+    if (rubric.some((item) => !validTeacherScore(rubricScores[item.id]))) {
+      setError("Enter a whole-number teacher observation score from 1 to 10 for every category.");
       return;
     }
 
@@ -435,17 +424,15 @@ export function CreativityLab({
     setError("");
     setVoiceAnalysisError("");
     setImageAnalysisError("");
-    const score = Number(criteriaAverage.toFixed(1));
-    const rubricSummary = rubric.map((item) => `${item.label} ${rubricScores[item.id]}/5`).join(", ");
-    let learnerResponse = storyText.trim() || (
+    const score = criteriaAverage;
+    const rubricSummary = rubric.map((item) => `${item.label} ${rubricScores[item.id]}/10`).join(", ");
+    const learnerResponse = storyText.trim() || (
       activityId === "story"
         ? "Voice story submitted."
         : uploadedFile
           ? `Submitted ${uploadedFile.name}`
           : "Completed a drawing activity."
     );
-    let voiceSummary = "";
-    let imageSummary = "";
     let analysis = voiceAnalysis;
     let analysisError = "";
     let imageAnalysisResult = imageAnalysis;
@@ -456,7 +443,8 @@ export function CreativityLab({
       studentName: activeStudent.name,
       activity: selectedActivity.title,
       prompt: selectedActivity.prompt,
-      percentage: Math.round((score / 5) * 100),
+      percentage: Math.round((score / 10) * 100),
+      teacherScoreScale: 10,
       score,
       rubric: { ...rubricScores },
       voiceRecorded: Boolean(audioBlob),
@@ -473,9 +461,6 @@ export function CreativityLab({
           setError(imageAnalysisError);
         }
       }
-      if (activityId !== "story" && imageAnalysisResult) {
-        imageSummary = `Image estimates: ${Object.entries(imageAnalysisResult.scores).map(([target, value]) => `${target.replaceAll("_", " ")} ${value}/5`).join(", ")}.`;
-      }
       if (audioBlob && !analysis) {
         try {
           analysis = await api.analyzeVoice(toVoiceFile(audioBlob));
@@ -483,15 +468,16 @@ export function CreativityLab({
           analysisError = cause instanceof Error ? cause.message : "Voice analysis could not be completed.";
         }
       }
-      if (analysis) {
-        voiceSummary = `Voice classification: ${analysis.creativity_class} (${Math.round(analysis.model_score * 100)}% model confidence).`;
-      }
-      assessment.notes = `${selectedActivity.title} · ${selectedActivity.prompt} · Rubric: ${rubricSummary}. ${learnerResponse.slice(0, 100)} ${imageSummary} ${voiceSummary}`.trim();
       assessment.imageAnalysis = imageAnalysisResult;
       assessment.imageAnalysisError = imageAnalysisError;
       assessment.voiceAnalysis = analysis;
       assessment.voiceAnalysisError = analysisError;
-      const savedRecord = await onSaveAssessment({ score, notes: assessment.notes });
+      const savedRecord = await onSaveAssessment({ score, notes: assessment.notes, creativityAssessment: {
+        teacherScores: assessment.rubric, teacherScoreScale: 10,
+        activity: assessment.activity, prompt: assessment.prompt,
+        imageAnalysis: imageAnalysisResult, voiceAnalysis: analysis,
+        imageAnalysisError, voiceAnalysisError: analysisError, voiceRecorded: assessment.voiceRecorded,
+      } });
       assessment.recordId = savedRecord?.id;
       onAssessmentComplete(assessment);
       setLatestAssessment(assessment);
@@ -784,7 +770,6 @@ export function CreativityLab({
                       <RubricEditor
                         scores={rubricScores}
                         onChange={setRubricScores}
-                        imageSuggestions={imageAnalysis?.scores}
                       />
                     </Card>
                     <Button className="creativity-submit" onClick={() => void submitAssessment()} disabled={submitting || analyzingModels || recording}>{submitting ? (audioBlob ? "Analyzing models & saving…" : "Analyzing image & saving…") : "Save & review ✧"}</Button>
@@ -807,7 +792,7 @@ export function CreativityLab({
           <Card className="creativity-result-summary">
             <div className="creativity-result-gauge"><strong>{latestAssessment.percentage}%</strong><span>CREATIVITY<br />OBSERVATION</span></div>
             <div className="creativity-result-rubric">{rubric.map((item) => (
-              <div className="creativity-result-score" key={item.id}><span>{item.icon}</span><div><strong>{item.label}</strong><small>{item.hint}</small><i><b style={{ width: `${latestAssessment.rubric[item.id] / 5 * 100}%` }} /></i></div><em>{latestAssessment.rubric[item.id]}/5</em></div>
+              <div className="creativity-result-score" key={item.id}><span>{item.icon}</span><div><strong>{item.label}</strong><small>{item.hint}</small><i><b style={{ width: `${(latestAssessment.rubric[item.id] ?? 0) / latestAssessment.teacherScoreScale * 100}%` }} /></i></div><em>{latestAssessment.rubric[item.id] == null ? "Not recorded" : `${latestAssessment.rubric[item.id]}/${latestAssessment.teacherScoreScale}`}</em></div>
             ))}</div>
           </Card>
           <div className="creativity-ai-model-grid">
@@ -815,9 +800,9 @@ export function CreativityLab({
             <Card className="creativity-image-model-result" aria-live="polite">
               <div className="creativity-voice-model-heading">
                 <span className="creativity-step-label">EXPERIMENTAL IMAGE ESTIMATES</span>
-                {latestAssessment.imageAnalysis && <strong>Average {latestAssessment.imageAnalysis.average_score.toFixed(1)}/5</strong>}
+                {latestAssessment.imageAnalysis?.scores && <strong>Average {latestAssessment.imageAnalysis.average_score.toFixed(1)}/5</strong>}
               </div>
-              {latestAssessment.imageAnalysis ? (
+              {latestAssessment.imageAnalysis?.scores ? (
                 <>
                   <p>These exploratory image estimates are suggestions only; the teacher’s rubric remains authoritative.</p>
                   <div className="creativity-image-model-scores">
@@ -827,8 +812,9 @@ export function CreativityLab({
                   </div>
                 </>
               ) : (
-                <p role="status">The assessment was saved, but image analysis was unavailable: {latestAssessment.imageAnalysisError || imageAnalysisError}</p>
+                <p role="status">The assessment was saved, but image analysis was unavailable: {latestAssessment.imageAnalysis?.prediction_error || latestAssessment.imageAnalysisError || "No saved image prediction is available."}</p>
               )}
+              <ColourUsage analysis={latestAssessment.imageAnalysis?.colour_analysis} />
             </Card>
           )}
           {(latestAssessment.activity === "Storytelling" || latestAssessment.voiceRecorded) && (
@@ -864,7 +850,7 @@ export function CreativityLab({
           )}
           </div>
           <div className="creativity-result-cards">
-            <Card className="creativity-strength-card"><span>✧ STRENGTHS TO CELEBRATE</span><h3>Notice what came naturally</h3><p>Use the learner’s highest rubric scores to guide your next conversation.</p><ul>{rubric.filter((item) => latestAssessment.rubric[item.id] >= 4).map((item) => <li key={item.id}><b>✓</b><span><strong>{item.label}</strong><small>{item.hint}</small></span></li>)}</ul></Card>
+            <Card className="creativity-strength-card"><span>✧ STRENGTHS TO CELEBRATE</span><h3>Notice what came naturally</h3><p>Use the learner’s highest rubric scores to guide your next conversation.</p><ul>{rubric.filter((item) => latestAssessment.rubric[item.id] != null && latestAssessment.rubric[item.id] / latestAssessment.teacherScoreScale >= 0.8).map((item) => <li key={item.id}><b>✓</b><span><strong>{item.label}</strong><small>{item.hint}</small></span></li>)}</ul></Card>
             <Card className="creativity-next-focus"><span>↗ NEXT STEP</span><h3>Keep the curiosity going</h3><p>Try a different kind of prompt next time and notice how their ideas change.</p><Button onClick={() => setView("journey")}>View creativity journey →</Button></Card>
           </div>
           <div className="creativity-step-actions"><Button variant="quiet" onClick={() => setView("overview")}>← Overview</Button><Button onClick={() => setView("assessment")}>Start another activity ✧</Button></div>
@@ -885,7 +871,7 @@ export function CreativityLab({
                   <article className="creativity-history-item" key={assessment.id}>
                     <span className="creativity-history-marker">{index === 0 ? "✧" : index + 1}</span>
                     <div><span className="creativity-kicker">{formatDate(assessment.completedAt)} · {assessment.activity}</span><h4>{assessment.prompt}</h4><p>{assessment.notes}</p></div>
-                    <strong>{assessment.percentage}%</strong>
+                    <div><strong>{assessment.percentage}%</strong><Button variant="quiet" size="small" onClick={() => { setLatestAssessment(assessment); setView("result"); }}>View assessment</Button></div>
                   </article>
                 ))}
               </div>
@@ -897,8 +883,9 @@ export function CreativityLab({
             <div className="creativity-journey-bottom">
               <Card className="creativity-journey-focus"><span className="creativity-kicker">KEEP EXPLORING</span><h3>Try a new creative strand</h3><p>Pair a hands-on drawing activity with a story prompt to explore different ways of expressing ideas.</p><Button onClick={() => setView("assessment")}>Choose next activity →</Button></Card>
               <Card className="creativity-journey-strands"><span className="creativity-kicker">STRANDS OBSERVED</span>{rubric.map((item) => {
-                const score = studentAssessments.reduce((sum, assessment) => sum + assessment.rubric[item.id] / studentAssessments.length, 0);
-                return <div className="creativity-strand" key={item.id}><span>{item.label}</span><strong>{score ? `${Math.round(score / 5 * 100)}%` : "—"}</strong><i><b style={{ width: `${score / 5 * 100}%` }} /></i></div>;
+                const recorded = studentAssessments.filter((assessment) => assessment.rubric[item.id] != null);
+                const percentage = recorded.length ? recorded.reduce((sum, assessment) => sum + assessment.rubric[item.id] / assessment.teacherScoreScale * 100, 0) / recorded.length : null;
+                return <div className="creativity-strand" key={item.id}><span>{item.label}</span><strong>{percentage == null ? "Not recorded" : `${Math.round(percentage)}%`}</strong><i><b style={{ width: `${percentage ?? 0}%` }} /></i></div>;
               })}</Card>
             </div>
           )}
@@ -941,8 +928,9 @@ function ModelObservationPanel({
                 ))}
               </div>
             ) : (
-              <small>{imageAnalysisError || "Add a drawing, then select Analyze media to get visual score suggestions."}</small>
+              <small>{imageAnalysis?.prediction_error || imageAnalysisError || "Add a drawing, then select Analyze media to get visual score suggestions."}</small>
             )}
+            <ColourUsage analysis={imageAnalysis?.colour_analysis} />
           </div>
         )}
         <div className="creativity-model-observation voice">
@@ -957,46 +945,58 @@ function ModelObservationPanel({
           )}
         </div>
       </div>
-      <small className="creativity-model-observations-note">AI output is experimental and never changes teacher rubric scores automatically. Image suggestions may be applied manually using the AI buttons in the separate teacher rubric.</small>
+      <small className="creativity-model-observations-note">AI output is experimental and never changes teacher rubric scores automatically. Image and teacher rubrics use different criteria and scales.</small>
     </Card>
   );
 }
 
-function RubricEditor({ scores, onChange, imageSuggestions }) {
+function RubricEditor({ scores, onChange }) {
   return (
     <fieldset className="creativity-rubric">
-      <legend>TEACHER OBSERVATION <span>Type a whole number from 1 to 5</span></legend>
+      <legend>TEACHER OBSERVATION <span>Type a whole number from 1 to 10</span></legend>
       {rubric.map((item) => (
         <div className="creativity-rubric-row" key={item.id}>
           <label htmlFor={`rubric-${item.id}`}><span>{item.icon}</span><span><strong>{item.label}</strong><small>{item.hint}</small></span></label>
-          {imageSuggestions?.[item.id] !== undefined && (
-            <button
-              type="button"
-              className="creativity-use-image-suggestion"
-              onClick={() => onChange((current) => ({ ...current, [item.id]: Math.max(1, Math.min(5, Math.round(imageSuggestions[item.id]))) }))}
-              aria-label={`Use image estimate ${imageSuggestions[item.id].toFixed(1)} for ${item.label}`}
-            >
-              AI {imageSuggestions[item.id].toFixed(1)}
-            </button>
-          )}
           <input
             id={`rubric-${item.id}`}
             type="number"
             min="1"
-            max="5"
+            max="10"
             step="1"
             required
             inputMode="numeric"
             value={scores[item.id] ?? ""}
             onChange={(event) => {
               const value = event.target.value;
-              onChange((current) => ({ ...current, [item.id]: value === "" ? "" : Number(value) }));
+              if (value === "" || (/^\d+$/.test(value) && validTeacherScore(Number(value)))) {
+                onChange((current) => ({ ...current, [item.id]: value === "" ? "" : Number(value) }));
+              }
             }}
-            aria-label={`${item.label} score out of five`}
-            aria-invalid={!Number.isInteger(scores[item.id]) || scores[item.id] < 1 || scores[item.id] > 5}
+            aria-label={`${item.label} score out of ten`}
+            aria-invalid={scores[item.id] !== "" && !validTeacherScore(scores[item.id])}
           />
         </div>
       ))}
     </fieldset>
+  );
+}
+
+function ColourUsage({ analysis }) {
+  if (!analysis) return null;
+  return (
+    <section className="creativity-colour-usage" aria-label="Detected Colour Usage">
+      <h4>Detected Colour Usage</h4>
+      <p>Dominant colour: <strong>{analysis.dominant_colour ?? "None"}</strong> &middot; {analysis.category_count} detected colour categories</p>
+      {analysis.colours.map((colour) => (
+        <div className="creativity-colour-row" key={colour.name}>
+          <span className="creativity-colour-swatch" style={{ backgroundColor: colour.hex }} aria-hidden="true" />
+          <span>{colour.name}</span>
+          <progress max="100" value={colour.percentage} aria-label={`${colour.name} usage`} />
+          <strong>{colour.percentage.toFixed(2)}%</strong>
+        </div>
+      ))}
+      {!analysis.drawing_pixels && <p>No drawing colours detected after excluding the background.</p>}
+      <small>{analysis.message}</small>
+    </section>
   );
 }
