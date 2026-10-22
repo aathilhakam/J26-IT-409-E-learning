@@ -5,6 +5,7 @@ const defaultNavigationItems = [
   { label: "Dashboard", href: "/dashboard", icon: "▦" },
   { label: "Student Profile", href: "/dashboard/profile", icon: "▤" },
   { label: "Upload & Content", href: "/dashboard/content", icon: "↥" },
+  { label: "Worksheet Scores", href: "/dashboard/scores", icon: "▥" },
   { label: "Weekly Review", href: "/dashboard#pathways", icon: "✓" },
 ];
 
@@ -38,7 +39,7 @@ export function WorkspaceLayout({
               href={item.href}
               key={item.label}
               onClick={(event) => {
-                if (!onNavigate || !["Dashboard", "Student Profile", "Upload & Content", "Weekly Review"].includes(item.label)) return;
+                if (!onNavigate || !["Dashboard", "Student Profile", "Upload & Content", "Worksheet Scores", "Weekly Review"].includes(item.label)) return;
                 event.preventDefault();
                 onNavigate(item.label);
               }}

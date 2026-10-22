@@ -1,0 +1,142 @@
+{
+  "source": "Unchanged cleaned ST001 source rows; explicit simulated teacher prerequisite confirmation for development integration test.",
+  "expectedFeatures": {
+    "Average_Score": 78.0,
+    "Average_Attempts": 1.75,
+    "Average_Time_Taken": 11.25,
+    "Total_Activities": 4,
+    "Completion_Rate": 100.0,
+    "Pre_Test": 50.0,
+    "Post_Test": 77.5,
+    "Unit_Test": 74.0,
+    "Monthly_Test": 73.5,
+    "Term_Result": 75.0,
+    "Motor_Skills_Score": 72.5,
+    "Creativity_Score": 72.5,
+    "Interactive_Engagement": 87.5,
+    "Test_Improvement": 27.5,
+    "Participation": "High",
+    "Attention_Level": "Medium",
+    "Confidence": "High",
+    "Collaboration": "Good",
+    "Learning_Difficulty": "Reading difficulty",
+    "Learning_Style": "Visual learner",
+    "Participation_Score": 3,
+    "Attention_Score": 2,
+    "Confidence_Score": 3,
+    "Collaboration_Score": 3,
+    "Historical_Lessons": 4,
+    "Average_Sequence_No": 2.5,
+    "Completed_Historical_Lessons": 2,
+    "Historical_Completion_Rate": 50.0
+  },
+  "activities": [
+    {
+      "domain": "Number Game",
+      "score": 95,
+      "maxScore": 100,
+      "notes": "Development fixture",
+      "attempts": 1,
+      "timeTakenMinutes": 8,
+      "completionStatus": "COMPLETED"
+    },
+    {
+      "domain": "Phonics Exercise",
+      "score": 55,
+      "maxScore": 100,
+      "notes": "Development fixture",
+      "attempts": 3,
+      "timeTakenMinutes": 15,
+      "completionStatus": "COMPLETED"
+    },
+    {
+      "domain": "Number Patterns",
+      "score": 92,
+      "maxScore": 100,
+      "notes": "Development fixture",
+      "attempts": 1,
+      "timeTakenMinutes": 10,
+      "completionStatus": "COMPLETED"
+    },
+    {
+      "domain": "Sound Recognition",
+      "score": 70,
+      "maxScore": 100,
+      "notes": "Development fixture",
+      "attempts": 2,
+      "timeTakenMinutes": 12,
+      "completionStatus": "COMPLETED"
+    }
+  ],
+  "assessments": [
+    {
+      "sourceComponent": "TEACHER_ASSESSMENT",
+      "assessmentType": "Number Recognition",
+      "assessmentId": "ASS001",
+      "score": 87,
+      "maxScore": 100,
+      "completionStatus": "COMPLETED",
+      "measures": {
+        "Pre_Test": 60,
+        "Post_Test": 90,
+        "Unit_Test": 88,
+        "Monthly_Test": 85,
+        "Term_Result": 87,
+        "Motor_Skills_Score": 75,
+        "Creativity_Score": 70,
+        "Interactive_Engagement": 90
+      }
+    },
+    {
+      "sourceComponent": "TEACHER_ASSESSMENT",
+      "assessmentType": "Phonics",
+      "assessmentId": "ASS002",
+      "score": 63,
+      "maxScore": 100,
+      "completionStatus": "COMPLETED",
+      "measures": {
+        "Pre_Test": 40,
+        "Post_Test": 65,
+        "Unit_Test": 60,
+        "Monthly_Test": 62,
+        "Term_Result": 63,
+        "Motor_Skills_Score": 70,
+        "Creativity_Score": 75,
+        "Interactive_Engagement": 85
+      }
+    }
+  ],
+  "observation": {
+    "participation": "High",
+    "attentionLevel": "Medium",
+    "confidence": "High",
+    "collaboration": "Good",
+    "learningDifficulty": "Reading difficulty",
+    "learningStyle": "Visual learner",
+    "demonstratedSkills": [
+      "Number sequence knowledge"
+    ]
+  },
+  "history": [
+    {
+      "lessonId": "LES001",
+      "sequenceNumber": 1,
+      "completionStatus": "Completed"
+    },
+    {
+      "lessonId": "LES003",
+      "sequenceNumber": 2,
+      "completionStatus": "Completed"
+    },
+    {
+      "lessonId": "LES004",
+      "sequenceNumber": 3,
+      "completionStatus": "Not Started"
+    },
+    {
+      "lessonId": "LES005",
+      "sequenceNumber": 4,
+      "completionStatus": "In Progress"
+    }
+  ]
+}

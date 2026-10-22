@@ -1,22 +1,53 @@
+# Operating system and IDE files
 .DS_Store
-.env
-node_modules/
-dist/
-target/
 .idea/
 .vscode/
 *.iml
 
-# Python AI Recommendation
-AI-Recommendation/**/__pycache__/
-AI-Recommendation/**/*.pyc
+# Environment and build files
+.env
+.env.*
+node_modules/
+dist/
+target/
+
+# Python generated files and environments
+__pycache__/
+*.py[cod]
+venv/
+env/
 AI-Recommendation/.venv/
 AI-Recommendation/venv/
 AI-Recommendation/**/.ipynb_checkpoints/
+AI-Recommendation/.pytest_cache/
+AI-Recommendation/.ruff_cache/
+AI-Recommendation/.benchmarks/
+
+# AI application environment files
 AI-Recommendation/.env
 AI-Recommendation/.env.*
 
-# Additional Python and macOS exclusions
-.DS_Store
-AI-Recommendation/.pytest_cache/
-AI-Recommendation/.benchmarks/
+# Uploaded teaching materials and source datasets
+AI-Recommendation/data/raw/original_files/
+
+# Locally processed datasets and generated results
+AI-Recommendation/data/processed/
+AI-Recommendation/data/final/
+
+# Local backend uploads
+backend/data/
+
+# Local workflow documentation — do not push
+/DASHBOARD_WORKFLOW.md
+/FEEDBACK_VIEWER_FIX.md
+/GRADE_ONE_BOOK_IMPORT.md
+/LEARNING_MATERIALS.md
+/LESSON_FEEDBACK_WORKFLOW.md
+/LESSON_PROGRESSION_HISTORY.md
+/LIVE_INTEGRATION.md
+/REMAINING_REQUIREMENTS.md
+/THREE_LESSON_RECOMMENDATIONS.md
+
+# Local assignment PDFs — do not push
+/IT23194212.pdf
+/TAF-409 (Last Updated one).pdf

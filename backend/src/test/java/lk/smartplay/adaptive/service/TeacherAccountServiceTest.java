@@ -18,7 +18,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@SuppressWarnings("null")
 class TeacherAccountServiceTest {
     private final TeacherAccountRepository repository = mock(TeacherAccountRepository.class);
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(4);

@@ -25,7 +25,6 @@ import lk.smartplay.adaptive.repository.LearningRecommendationRepository;
 import lk.smartplay.adaptive.repository.LearningRecordRepository;
 
 @ExtendWith(MockitoExtension.class)
-@SuppressWarnings("null")
 class RecommendationServiceTest {
     private static final String OWNER_ID = "teacher-1";
     @Mock

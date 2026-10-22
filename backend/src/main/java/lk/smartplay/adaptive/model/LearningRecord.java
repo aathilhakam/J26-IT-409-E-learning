@@ -15,6 +15,16 @@ public class LearningRecord {
     private double maxScore;
     private String notes;
     private Instant assessedAt;
+    private Integer attempts;
+    private Double timeTakenMinutes;
+    private String completionStatus;
+    public void activityDetails(Integer attempts, Double minutes, String status) {
+        this.attempts = attempts; this.timeTakenMinutes = minutes; this.completionStatus = status;
+    }
+    public Integer getAttempts() { return attempts; }
+    public Double getTimeTakenMinutes() { return timeTakenMinutes; }
+    public String getCompletionStatus() { return completionStatus; }
+
 
     public LearningRecord() {
     }

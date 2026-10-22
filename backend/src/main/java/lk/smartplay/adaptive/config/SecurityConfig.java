@@ -59,6 +59,11 @@ public class SecurityConfig {
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/auth/csrf", "/api/auth/register", "/api/auth/login").permitAll()
+                        .requestMatchers("/api/content/import-grade-one", "/api/content/import-grade-one/**").hasRole("TEACHER")
+                        .requestMatchers("/api/dashboard/**", "/api/worksheet-scores/**").hasRole("TEACHER")
+                        .requestMatchers("/api/students/*/feedback", "/api/students/*/observations", "/api/students/*/history",
+                                "/api/recommendations/student/*/milestones", "/api/recommendations/student/*/pathway", "/api/recommendations/student/*/features",
+                                "/api/recommendations/*/assign").hasRole("TEACHER")
                         .anyRequest().authenticated())
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())

@@ -1,7 +1,9 @@
 package lk.smartplay.adaptive.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -15,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
 
 import lk.smartplay.adaptive.dto.CreateLearningRecordRequest;
+import lk.smartplay.adaptive.dto.ArchiveStudentRequest;
 import lk.smartplay.adaptive.dto.StudentProfileResponse;
 import lk.smartplay.adaptive.model.LearningRecord;
 import lk.smartplay.adaptive.model.Student;
@@ -71,5 +74,52 @@ class StudentServiceTest {
         assertThrows(
                 ResponseStatusException.class,
                 () -> studentService.profile("student-1", OWNER_ID));
+    }
+
+    @Test
+    void archivesStudentWhenTeacherConfirmsFullName() {
+        Student student = new Student("Amaya Silva", "Grade 1", OWNER_ID);
+        when(studentRepository.findByIdAndOwnerId("student-1", OWNER_ID))
+                .thenReturn(Optional.of(student));
+        when(studentRepository.save(student)).thenReturn(student);
+
+        Student archived = studentService.archiveStudent(
+                "student-1",
+                new ArchiveStudentRequest("  Amaya   Silva "),
+                OWNER_ID);
+
+        assertFalse(archived.isActive());
+        verify(studentRepository).save(student);
+    }
+
+    @Test
+    void rejectsArchiveWhenConfirmedFullNameDoesNotMatch() {
+        when(studentRepository.findByIdAndOwnerId("student-1", OWNER_ID))
+                .thenReturn(Optional.of(new Student("Amaya Silva", "Grade 1", OWNER_ID)));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> studentService.archiveStudent(
+                        "student-1",
+                        new ArchiveStudentRequest("Amaya Perera"),
+                        OWNER_ID));
+
+        assertEquals(400, exception.getStatusCode().value());
+    }
+
+    @Test
+    void createsLearningRecordWithItsStudentAndOriginalScoreModel() {
+        when(studentRepository.findByIdAndOwnerId("student-1", OWNER_ID))
+                .thenReturn(Optional.of(new Student("Amaya", "Grade 1", OWNER_ID)));
+        when(recordRepository.save(org.mockito.ArgumentMatchers.any(LearningRecord.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        LearningRecord record = studentService.addRecord("student-1",
+                new CreateLearningRecordRequest(" Numeracy ", 4.0, 5.0, " Good progress "), OWNER_ID);
+        assertEquals("student-1", record.getStudentId());
+        assertEquals("Numeracy", record.getDomain());
+        assertEquals(4.0, record.getScore());
+        assertEquals(5.0, record.getMaxScore());
+        assertEquals("Good progress", record.getNotes());
+        verify(recordRepository).save(record);
     }
 }

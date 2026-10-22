@@ -7,7 +7,6 @@ env/
 
 # Data & models
 *.pkl
-*.joblib
 *.h5
 *.pt
 

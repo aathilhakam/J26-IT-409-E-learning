@@ -15,7 +15,12 @@ notebooks/
   04_model_training.ipynb
   05_model_evaluation.ipynb
 src/
-  recommendation/       Reusable prediction and learning-path service
+  preprocessing/        Data cleaning and transformation
+  features/             Feature creation
+  models/               Model definitions and training
+  recommendation/       Recommendation logic
+  evaluation/           Evaluation metrics and utilities
+  utils/                Shared helpers
 models/                 Exported model artifacts
 tests/                  Automated tests
 ```
@@ -36,14 +41,3 @@ Run the notebooks in numerical order. Place source datasets in `data/raw/`; save
 ## Backend integration
 
 The Spring Boot backend can load exported model artifacts via a Python microservice or consume precomputed recommendation tables. Document the API contract and JSON schemas alongside the backend integration.
-
-The reusable recommendation logic is available from `src/recommendation`. From the repository root, load the trained Random Forest and its deployment data with:
-
-```python
-from src.recommendation import RecommendationService
-
-service = RecommendationService.from_project_root()
-recommendation = service.get_student_recommendation("student-id")
-```
-
-The result includes the predicted outcome and, when available, the student's ordered learning path. Run `pytest` to test the service.
