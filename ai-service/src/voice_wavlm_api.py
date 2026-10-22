@@ -1,8 +1,10 @@
 
 from pathlib import Path
 import os
+import subprocess
 import tempfile
 
+import imageio_ffmpeg
 import joblib
 import librosa
 import numpy as np
@@ -28,6 +30,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_DIR = ROOT / "models"
+ALLOWED_EXTENSIONS = {".wav", ".ogg", ".webm", ".mp4", ".m4a", ".mp3"}
+MAX_UPLOAD_BYTES = 15 * 1024 * 1024
+DISPLAY_CLASS_NAMES = {"Weak": "Developing"}
 
 CHECKPOINT_PATH = (
     MODEL_DIR / "voice_wavlm_classifier.pth"
@@ -191,9 +196,9 @@ def predict_audio(audio_path):
         np.argmax(probabilities)
     )
 
-    predicted_class = CLASSES[
-        predicted_index
-    ]
+    predicted_class = DISPLAY_CLASS_NAMES.get(
+        CLASSES[predicted_index], CLASSES[predicted_index]
+    )
 
     return {
         "creativity_class": predicted_class,
@@ -201,11 +206,17 @@ def predict_audio(audio_path):
             probabilities[predicted_index]
         ),
         "class_scores": {
-            name: float(probabilities[i])
+            DISPLAY_CLASS_NAMES.get(name, name): float(probabilities[i])
             for i, name in enumerate(CLASSES)
         },
         "model": "WavLM-Base",
-        "teacher_validation": "Pending"
+        "teacher_validation": "Pending",
+        "recording_retained": False,
+        "evaluation_notice": (
+            "Experimental model: prior held-out accuracy was 62.5% on 8 "
+            "recordings, below the 75% majority-class baseline. Review with "
+            "a teacher."
+        ),
     }
 
 
@@ -246,46 +257,82 @@ def health():
 async def predict_voice(
     file: UploadFile = File(...)
 ):
-
     filename = file.filename or ""
-
-    # Start with PCM WAV files only
-    if Path(filename).suffix.lower() != ".wav":
+    suffix = Path(filename).suffix.lower()
+    if suffix not in ALLOWED_EXTENSIONS:
+        await file.close()
         raise HTTPException(
             status_code=400,
-            detail="Please upload a WAV file."
+            detail="Upload a WAV, OGG, WebM, MP4/M4A, or MP3 audio recording."
         )
 
-    contents = await file.read()
-
-    if len(contents) > 15 * 1024 * 1024:
+    contents = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(contents) > MAX_UPLOAD_BYTES:
+        await file.close()
         raise HTTPException(
             status_code=413,
             detail="Audio file exceeds 15 MB."
         )
+    if not contents:
+        await file.close()
+        raise HTTPException(status_code=400, detail="The audio upload is empty.")
 
-    temporary_path = None
-
+    temporary_directory = None
     try:
-        with tempfile.NamedTemporaryFile(
-            suffix=".wav",
-            delete=False
-        ) as temp:
-
-            temp.write(contents)
-            temporary_path = temp.name
-
-        return predict_audio(temporary_path)
-
-    except Exception as exc:
+        temporary_directory = tempfile.TemporaryDirectory(prefix="smartplay_wavlm_")
+        source_path = Path(temporary_directory.name) / f"recording{suffix}"
+        wav_path = Path(temporary_directory.name) / "recording.wav"
+        source_path.write_bytes(contents)
+        try:
+            conversion = subprocess.run(
+                [
+                    imageio_ffmpeg.get_ffmpeg_exe(),
+                    "-nostdin",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-y",
+                    "-i",
+                    str(source_path),
+                    "-t",
+                    str(MAX_SECONDS),
+                    "-vn",
+                    "-ac",
+                    "1",
+                    "-ar",
+                    str(SAMPLE_RATE),
+                    "-c:a",
+                    "pcm_s16le",
+                    str(wav_path),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=30,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise HTTPException(
+                status_code=400,
+                detail="Audio conversion timed out. Try a shorter recording.",
+            ) from exc
+        if conversion.returncode != 0 or not wav_path.is_file():
+            detail = conversion.stderr.strip()[-500:]
+            raise HTTPException(
+                status_code=400,
+                detail="The uploaded recording could not be decoded. "
+                + (detail or "Record the voice again and retry."),
+            )
+        if wav_path.stat().st_size <= 44:
+            raise HTTPException(status_code=400, detail="The audio upload is empty.")
+        return predict_audio(str(wav_path))
+    except HTTPException:
+        raise
+    except (OSError, RuntimeError, ValueError) as exc:
         raise HTTPException(
-            status_code=400,
+            status_code=500,
             detail=f"Audio processing failed: {exc}"
-        )
-
+        ) from exc
     finally:
-        if temporary_path:
-            try:
-                os.unlink(temporary_path)
-            except OSError:
-                pass
+        await file.close()
+        if temporary_directory:
+            temporary_directory.cleanup()

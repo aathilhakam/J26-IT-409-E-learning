@@ -6,3 +6,13 @@ target/
 .idea/
 .vscode/
 *.iml
+
+# Private child voice recordings and associated labels.
+/ai-service/data/voice/
+/ai-service/data/labels/VC01.xlsx
+/ai-service/models/voice_xgboost/
+/ai-service/results/voice_xgboost/
+/ai-service/models/voice_custom_cnn/
+/ai-service/results/voice_custom_cnn/
+/ai-service/models/voice_1dcnn/
+/ai-service/results/voice_1dcnn/

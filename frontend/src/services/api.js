@@ -67,7 +67,9 @@ async function requestWavlmPrediction(file) {
     const message =
       typeof payload === "object" && payload !== null && "detail" in payload
         ? String(payload.detail)
-        : `Voice analysis failed (${response.status})`;
+        : response.status >= 500
+          ? `Voice analysis service error (${response.status}). Check that the voice service is running on port 8000 and inspect its terminal for details.`
+          : `Voice analysis failed (${response.status})`;
     throw new Error(message);
   }
   const result = await response.json();
@@ -91,9 +93,10 @@ async function requestWavlmPrediction(file) {
       (score) => typeof score !== "number" || !Number.isFinite(score) || score < 0 || score > 1,
     ) ||
     Math.abs(probabilities.reduce((sum, score) => sum + score, 0) - 1) > 0.02 ||
-    Math.abs(classScores[result.creativity_class] - result.model_score) > 0.001
+    Math.abs(classScores[result.creativity_class] - result.model_score) > 0.001 ||
+    result.recording_retained !== false
   ) {
-    throw new Error("The WavLM voice model returned an invalid prediction response.");
+    throw new Error("The voice model returned an invalid prediction response.");
   }
   return result;
 }
@@ -109,11 +112,19 @@ async function requestImagePrediction(file) {
   });
 
   if (!response.ok) {
-    const payload = await response.json().catch(() => null);
+    const responseBody = await response.text();
+    let payload = null;
+    try {
+      payload = responseBody ? JSON.parse(responseBody) : null;
+    } catch {
+      payload = null;
+    }
     const message =
       typeof payload === "object" && payload !== null && "detail" in payload
         ? String(payload.detail)
-        : `Image analysis failed (${response.status})`;
+        : response.status >= 500
+          ? `Image analysis service error (${response.status}). Make sure the image service is running on port 8003 and check its terminal for details.`
+          : `Image analysis failed (${response.status})`;
     throw new Error(message);
   }
   const result = await response.json();
@@ -190,6 +201,7 @@ export const api = {
       body: JSON.stringify(record),
     }),
   analyzeVoice: (file) => requestWavlmPrediction(file),
+  analyzeWavlm: (file) => requestWavlmPrediction(file),
   analyzeImage: (file) => requestImagePrediction(file),
   recommendations: (studentId) =>
     request(`/students/${studentId}/recommendations`),

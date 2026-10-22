@@ -1,16 +1,4 @@
-"""
-SmartPlay Component 3 - Voice Random Forest Regression (baseline).
 
-Run from ai-service:
-    python src/train_voice_random_forest.py --mode prepare
-    # REVIEW voice_manifest.csv manually; add correct student IDs and confirm matches
-    python src/train_voice_random_forest.py --mode check
-    python src/train_voice_random_forest.py --mode train
-
-Uses genuine, teacher-validated ratings for six voice-delivery dimensions.
-Does NOT infer student identity or invent teacher scores. Audio filenames
-are suggested matches, not evidence that a match is correct.
-"""
 
 import argparse
 import hashlib

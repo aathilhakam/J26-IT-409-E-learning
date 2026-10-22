@@ -47,20 +47,20 @@ npm run dev
 
 Open the Vite URL shown in the terminal (normally `http://localhost:5173`). Vite proxies `/api` requests to Spring Boot at `http://localhost:8080`.
 
-To enable recorded voice analysis, start the WavLM classifier from `ai-service`. The `voice_wavlm_classifier.pth` checkpoint and `voice_wavlm_scaler.joblib` must be present under `ai-service/models`:
+To enable recorded voice analysis with WavLM, make sure `voice_wavlm_classifier.pth` and `voice_wavlm_scaler.joblib` exist under `ai-service/models`. Start the existing WavLM service from the repository root:
 
-```sh
-cd ai-service
-uvicorn src.voice_wavlm_api:app --host 127.0.0.1 --port 8000
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn src.voice_wavlm_api:app --app-dir .\ai-service --host 127.0.0.1 --port 8000
 ```
 
-The frontend proxies `/ai` to this service. Set `VITE_WAVLM_API_URL` to a different API base when deploying. Recordings are converted to mono 16 kHz WAV and limited to 60 seconds. WavLM predicts one of three broad classes (Weak, Moderate, or High) and returns class probabilities; it does not produce rubric scores or transcribe speech. Predictions are experimental and are displayed separately from the teacher-entered observation rubric.
+The frontend proxies `/ai` to this service; set `VITE_WAVLM_API_URL` to a different API base when deploying. The browser uploads its native microphone recording format. The API converts WAV, OGG, WebM, MP4/M4A, or MP3 recordings (up to 15 MB) to mono WAV at the model's sample rate with the installed `imageio-ffmpeg` binary. Audio is processed in a temporary directory and deleted after prediction. WavLM returns Developing/Moderate/High probabilities, not rubric scores or a transcript. Its prior held-out accuracy was 62.5% on 8 recordings, below the 75% majority-class baseline, so treat output as experimental and keep teacher assessment authoritative.
 
-To enable image analysis with the trained ResNet18 model, start the image service from `ai-service`. The `resnet18_scratch.pth` checkpoint and its evaluation report must be present under `ai-service/models` and `ai-service/results`:
+The classroom voice-analysis path now uses WavLM; the separate Custom 1D CNN experiment and its saved files are left untouched.
 
-```sh
-cd ai-service
-uvicorn src.image_creativity_api:app --host 127.0.0.1 --port 8003
+To enable image analysis with the trained ResNet18 model, start the image service from the repository root. The `resnet18_scratch.pth` checkpoint and its evaluation report must be present under `ai-service/models` and `ai-service/results`:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn src.image_creativity_api:app --app-dir .\ai-service --host 127.0.0.1 --port 8003
 ```
 
 The frontend proxies `/image-ai` to this service. Set `VITE_IMAGE_API_URL` to a different API base when deploying. On drawing activities, ResNet18 estimates five visual dimensions on a 1–5 scale. Image and audio are processed separately and are not retained after analysis. The model outputs are experimental suggestions; teachers review them independently, and the teacher-entered rubric remains authoritative.
