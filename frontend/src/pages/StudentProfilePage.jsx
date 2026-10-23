@@ -1,4 +1,3 @@
-import MilestoneProgress from "../features/recommendations/components/MilestoneProgress";
 import StudentPathways from "../features/recommendations/components/StudentPathways";
 import SubmittedFeedback from "../features/feedback/SubmittedFeedback";
 import LearningEvidence from "../features/evidence/LearningEvidence";
@@ -6,10 +5,10 @@ import AssignedMaterials from "../features/content/components/AssignedMaterials"
 import StudentImportTools from "../features/students/components/StudentImportTools";
 import ArchiveStudentDialog from "../features/students/components/ArchiveStudentDialog";
 import StudentRoster from "../features/students/components/StudentRoster";
+import AIRecommendationPanel from "../features/recommendations/components/AIRecommendationPanel";
 import React, { useEffect, useMemo, useState } from "react";
 import { Avatar, Badge, Button, Card, Field } from "../components";
 import { displayDate, initials } from "../utils/format";
-import AIRecommendationPanel from "../features/recommendations/components/AIRecommendationPanel";
 import { api } from "../services/api";
 
 function StudentProfilePage({
@@ -37,7 +36,12 @@ function StudentProfilePage({
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [archiveError, setArchiveError] = useState("");
   const [worksheetScores, setWorksheetScores] = useState([]);
+  const [assessmentScores, setAssessmentScores] = useState([]);
   const [feedbackLessons, setFeedbackLessons] = useState([]);
+  const [feedbackRecords, setFeedbackRecords] = useState([]);
+  const [prototypeSnapshot, setPrototypeSnapshot] = useState(null);
+  const [prototypeSnapshotBusy, setPrototypeSnapshotBusy] = useState(false);
+  const [prototypeSnapshotError, setPrototypeSnapshotError] = useState("");
   const [worksheetDataBusy, setWorksheetDataBusy] = useState(false);
   const [worksheetDataError, setWorksheetDataError] = useState("");
   const importTools = <StudentImportTools {...{ onImportExcel, onDownloadTemplate, onExportStudentDetails, importingStudents, onAddStudent }} studentCount={students.length} />;
@@ -46,13 +50,17 @@ function StudentProfilePage({
     if (!activeStudent?.id) return undefined;
     let current = true;
     setWorksheetScores([]);
+    setAssessmentScores([]);
     setFeedbackLessons([]);
+    setFeedbackRecords([]);
     setWorksheetDataBusy(true);
     setWorksheetDataError("");
     Promise.all([api.assessments(activeStudent.id), api.studentFeedback(activeStudent.id)])
       .then(([assessments, feedback]) => {
         if (!current) return;
+        setFeedbackRecords((feedback || []).filter(row => row.submissionStatus === "SUBMITTED"));
         setWorksheetScores((assessments || []).filter(row => row.worksheet));
+        setAssessmentScores((assessments || []).filter(row => row.worksheet !== true));
         const groups = new Map();
         (feedback || []).filter(row => row.submissionStatus === "SUBMITTED" && row.submittedAt).forEach(row => {
           const key = row.materialId || row.lessonTitle || "unknown-lesson";
@@ -67,6 +75,19 @@ function StudentProfilePage({
         if (current) setWorksheetDataError(cause.message || "Could not load worksheet scores and lesson feedback.");
       })
       .finally(() => { if (current) setWorksheetDataBusy(false); });
+    return () => { current = false; };
+  }, [activeStudent?.id]);
+
+  useEffect(() => {
+    if (!activeStudent?.id) return undefined;
+    let current = true;
+    setPrototypeSnapshot(null);
+    setPrototypeSnapshotError("");
+    setPrototypeSnapshotBusy(true);
+    api.prototypeFeatureSnapshot(activeStudent.id)
+      .then(snapshot => { if (current && snapshot?.available !== false) setPrototypeSnapshot(snapshot); })
+      .catch(cause => { if (current) setPrototypeSnapshotError(cause.message || "Could not load the experimental feature snapshot."); })
+      .finally(() => { if (current) setPrototypeSnapshotBusy(false); });
     return () => { current = false; };
   }, [activeStudent?.id]);
 
@@ -166,8 +187,20 @@ function StudentProfilePage({
         </div>
         <div className="student-profile-summary-stat"><strong>{worksheetDataBusy ? "—" : `${worksheetProgress.toFixed(0)}%`}</strong><span>Overall progress</span></div>
         <div className="student-profile-summary-stat"><strong>{worksheetDataBusy ? "—" : feedbackLessons.length}</strong><span>Lessons with feedback</span></div>
-        <div className="student-profile-summary-stat"><strong>{worksheetDataBusy ? "—" : worksheetScores.length}</strong><span>Learning records</span></div>
+        <div className="student-profile-summary-stat"><strong>{worksheetDataBusy ? "—" : worksheetScores.length + assessmentScores.length}</strong><span>Learning records</span></div>
       </section>
+
+      <Card as="section" className="student-profile-card">
+        <div className="student-profile-card-heading"><div><span className="dashboard-section-kicker">EXPERIMENTAL MODEL</span><h2>Latest experimental model snapshot</h2><p>Values imported from the latest experimental model template for this student.</p></div></div>
+        {prototypeSnapshotError && <p role="alert">{prototypeSnapshotError}</p>}
+        {prototypeSnapshotBusy ? <p role="status">Loading feature snapshot…</p> : prototypeSnapshot ? <>
+          <p className="teacher-note">Imported {prototypeSnapshot.createdAt ? displayDate(prototypeSnapshot.createdAt) : "date unavailable"}</p>
+          <div className="worksheet-results-table-wrap"><table className="worksheet-results-table">
+            <thead><tr><th scope="col">Feature</th><th scope="col">Value</th></tr></thead>
+            <tbody>{Object.entries(prototypeSnapshot.features || {}).map(([name, value]) => <tr key={name}><td>{name.replaceAll("_", " ")}</td><td>{value}</td></tr>)}</tbody>
+          </table></div>
+        </> : !prototypeSnapshotError && <p>No experimental feature template has been imported for this student yet.</p>}
+      </Card>
 
       <div className="student-profile-grid">
         <Card as="section" className="student-profile-card">
@@ -187,27 +220,36 @@ function StudentProfilePage({
 
         <Card as="section" className="student-profile-card student-profile-records">
           <div className="student-profile-card-heading">
-            <div><span className="dashboard-section-kicker">CLASSROOM ACTIVITY</span><h2>Worksheet score records</h2><p>Scores recorded from this student’s worksheets.</p></div>
+            <div><h2>Activity scores</h2><p>Classroom worksheet scores and imported assessment results for this student.</p></div>
           </div>
           {worksheetDataError && <p role="alert">{worksheetDataError}</p>}
-          {worksheetDataBusy ? (
-            <div className="student-profile-blank"><span>…</span><div><strong>Loading records</strong><p>Fetching classroom activity for this student.</p></div></div>
-          ) : worksheetScores.length > 0 ? (
-            <div className="student-profile-record-list">
-              {worksheetScores.map((record) => (
-                <article className="student-profile-record" key={record.id}>
+          {worksheetDataBusy ? <div className="student-profile-blank"><span>…</span><div><strong>Loading records</strong><p>Fetching activity scores for this student.</p></div></div> : <>
+            <details className="student-profile-score-group">
+              <summary><span>Classroom activity scores</span><span className="student-profile-score-count">{worksheetScores.length}</span></summary>
+              {worksheetScores.length > 0 ? <div className="student-profile-record-list">
+                {worksheetScores.map((record) => (
+                  <article className="student-profile-record" key={record.id}>
+                    <span className="dashboard-activity-icon record" aria-hidden="true">▤</span>
+                    <div><strong>{record.worksheetTitle || "Worksheet assessment"}</strong><p>{record.subject || "Subject not specified"}{record.notes ? ` · ${record.notes}` : ""}</p><small>{displayDate(record.assessmentDate || record.assessedAt)}</small></div>
+                    <span className="student-profile-record-score">{record.score} / {record.maxScore} · {Number(record.percentage || 0).toFixed(0)}%</span>
+                  </article>
+                ))}
+              </div> : <p>No classroom activity scores recorded yet.</p>}
+            </details>
+            <details className="student-profile-score-group">
+              <summary><span>Assessment activity scores</span><span className="student-profile-score-count">{assessmentScores.length}</span></summary>
+              {assessmentScores.length > 0 ? <div className="student-profile-record-list">
+                {assessmentScores.map(record => <article className="student-profile-record" key={record.id}>
                   <span className="dashboard-activity-icon record" aria-hidden="true">▤</span>
-                  <div><strong>{record.worksheetTitle || "Worksheet assessment"}</strong><p>{record.subject || "Subject not specified"}{record.notes ? ` · ${record.notes}` : ""}</p><small>{displayDate(record.assessmentDate || record.assessedAt)}</small></div>
+                  <div><strong>{record.assessmentId || record.assessmentType || "Assessment result"}</strong><p>{[record.assessmentType, record.sourceComponent, record.completionStatus, record.attempts != null ? `${record.attempts} attempts` : "", record.timeTakenMinutes != null ? `${record.timeTakenMinutes} minutes` : ""].filter(Boolean).join(" · ")}</p>
+                    {record.notes && <p>{record.notes}</p>}
+                    {Object.keys(record.measures || {}).length > 0 && <p>{Object.entries(record.measures).map(([name, value]) => `${name.replaceAll("_", " ")}: ${value}`).join(" · ")}</p>}
+                    <small>{displayDate(record.assessedAt)}</small></div>
                   <span className="student-profile-record-score">{record.score} / {record.maxScore} · {Number(record.percentage || 0).toFixed(0)}%</span>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="student-profile-blank">
-              <span>＋</span>
-              <div><strong>No worksheet scores yet</strong><p>Imported worksheet scores will appear here.</p></div>
-            </div>
-          )}
+                </article>)}
+              </div> : <p>No assessment activity scores recorded yet.</p>}
+            </details>
+          </>}
         </Card>
       </div>
 
@@ -217,10 +259,9 @@ function StudentProfilePage({
 
       <AssignedMaterials student={activeStudent} items={contentItems} busy={contentBusy} onDownload={onDownloadMaterial} />
 
-      <MilestoneProgress showRecommendations={false} key={`milestones-${activeStudent.id}`} studentId={activeStudent.id} materials={contentItems} onChanged={()=>onRefreshEvidence?.(activeStudent.id)} />
-      <AIRecommendationPanel studentId={activeStudent.id} />
+      <AIRecommendationPanel key={`model-prediction-${activeStudent.id}`} studentId={activeStudent.id} />
 
-      <StudentPathways key={`pathways-${activeStudent.id}`} student={activeStudent} materials={contentItems} initial={recommendations} onChanged={onRefreshEvidence} />
+      <StudentPathways key={`pathways-${activeStudent.id}`} student={activeStudent} materials={contentItems} moduleScores={[...worksheetScores, ...assessmentScores]} teacherFeedback={feedbackRecords} feedbackLoading={worksheetDataBusy} feedbackError={worksheetDataError} initial={recommendations} onChanged={onRefreshEvidence} />
 
     </div>
   );

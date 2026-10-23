@@ -10,10 +10,13 @@ import lk.smartplay.adaptive.service.LiveFeatureService;
 @Document("recommendation_milestones")
 public class RecommendationMilestone {
     @Id public String id;
-    public String ownerId,studentId,status,message,predictedOutcome,modelVersion;
+    public String ownerId,studentId,status,message,predictedOutcome,modelVersion,modelOutcomeCompatibility,applicationOutcome,pathwayDecision,outcomeDiscrepancy,assessmentEvidenceFingerprint;
+    public Double verifiedPerformancePercentage;
+    public Integer verifiedAssessmentCount;
     public int milestone;
     public Instant createdAt,updatedAt,leaseUntil;
     public List<String> completedMaterialIds=List.of(),recommendationIds=List.of(),evidenceIds=List.of();
+    public List<AssessmentEvidence> assessmentEvidence=List.of();
     public Map<String,Double> probabilities=Map.of();
     public boolean inferenceReady;
     public List<LearningRecommendation> plannedRecommendations=List.of();
@@ -22,5 +25,7 @@ public class RecommendationMilestone {
 
     public record LessonScore(String materialId,String worksheetTitle,String subject,java.time.Instant completedAt,
             java.time.LocalDate assessmentDate,double score,double maxScore,double percentage,String teacherFeedback,String assessmentResultId) {}
+    public record AssessmentEvidence(String assessmentResultId,String assessmentIdentifier,String title,String assessmentType,
+            String sourceComponent,double score,double maximumScore,double percentage,String completionStatus,Instant assessedAt) {}
     public record ThreeLessonPerformance(List<LessonScore> lessons,double averagePercentage,double changePercentagePoints,String trend) {}
 }

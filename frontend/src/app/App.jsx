@@ -11,7 +11,6 @@ import { AuthPage } from "../features/auth/AuthPage";
 import DashboardPage from "../pages/DashboardPage";
 import StudentProfilePage from "../pages/StudentProfilePage";
 import ContentManagementPage from "../pages/ContentPage";
-import WorksheetScoresPage from "../pages/WorksheetScoresPage";
 import LearnerModal from "../features/students/components/LearnerModal";
 import MaterialEditor from "../features/content/components/MaterialEditor";
 import { initials } from "../utils/format";
@@ -22,12 +21,15 @@ function App() {
   const [pathname, setPathname] = useState(() => {
     const currentPath = window.location.pathname;
     return currentPath === "/login" || currentPath === "/register" || currentPath === "/dashboard" || currentPath === "/dashboard/profile"
-      || currentPath === "/dashboard/content" || currentPath === "/dashboard/scores" || isLessonPath(currentPath)
+      || currentPath === "/dashboard/content" || isLessonPath(currentPath)
       ? currentPath
+      : currentPath === "/dashboard/scores"
+      ? "/dashboard"
       : "/login";
   });
   const [sessionUser, setSessionUser] = useState(null);
   const [sessionChecked, setSessionChecked] = useState(false);
+  const [authNotice, setAuthNotice] = useState("");
   const [students, setStudents] = useState([]);
   const [activeId, setActiveId] = useState("");
   const [profile, setProfile] = useState(initialProfile);
@@ -53,8 +55,9 @@ function App() {
   const [showMaterialForm, setShowMaterialForm] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [assigningMaterial, setAssigningMaterial] = useState(null);
+  const [practiceModuleContext, setPracticeModuleContext] = useState(null);
   const [pendingDashboardSection, setPendingDashboardSection] = useState("");
-  const isProtectedPath = isLessonPath(pathname) || pathname === "/dashboard" || pathname === "/dashboard/profile" || pathname === "/dashboard/content" || pathname === "/dashboard/scores";
+  const isProtectedPath = isLessonPath(pathname) || pathname === "/dashboard" || pathname === "/dashboard/profile" || pathname === "/dashboard/content";
   const isDashboardPath = pathname === "/dashboard" || pathname === "/dashboard/profile";
 
   useEffect(() => {
@@ -63,8 +66,10 @@ function App() {
     }
     const handlePopState = () => {
       const currentPath = window.location.pathname;
-      setPathname(currentPath === "/login" || currentPath === "/register" || currentPath === "/dashboard" || currentPath === "/dashboard/profile" || currentPath === "/dashboard/content" || currentPath === "/dashboard/scores" || isLessonPath(currentPath)
+      setPathname(currentPath === "/login" || currentPath === "/register" || currentPath === "/dashboard" || currentPath === "/dashboard/profile" || currentPath === "/dashboard/content" || isLessonPath(currentPath)
         ? currentPath
+        : currentPath === "/dashboard/scores"
+        ? "/dashboard"
         : "/login");
     };
     window.addEventListener("popstate", handlePopState);
@@ -88,7 +93,18 @@ function App() {
       navigate("/dashboard");
       return;
     }
-    navigate(page === "Dashboard" ? "/dashboard" : page === "Student Profile" ? "/dashboard/profile" : page === "Worksheet Scores" ? "/dashboard/scores" : "/dashboard/content");
+    navigate(page === "Dashboard" ? "/dashboard" : page === "Student Profile" ? "/dashboard/profile" : "/dashboard/content");
+  }, [navigate]);
+
+  useEffect(() => {
+    const handleExpiredSession = () => {
+      setSessionUser(null);
+      setSessionChecked(true);
+      setAuthNotice("Your session expired. Please log in again.");
+      navigate("/login");
+    };
+    window.addEventListener("smartplay-session-expired", handleExpiredSession);
+    return () => window.removeEventListener("smartplay-session-expired", handleExpiredSession);
   }, [navigate]);
 
   useEffect(() => {
@@ -103,6 +119,12 @@ function App() {
     api.currentUser()
       .then((user) => {
         if (!active) return;
+        if (!user) {
+          setSessionUser(null);
+          setSessionChecked(true);
+          navigate("/login");
+          return;
+        }
         setSessionUser(user);
         setSessionChecked(true);
       })
@@ -121,6 +143,7 @@ function App() {
     const user = pathname === "/register"
       ? await api.register(account)
       : await api.login(account);
+    setAuthNotice("");
     setSessionUser(user);
     navigate("/dashboard");
   }, [navigate, pathname]);
@@ -382,6 +405,7 @@ function App() {
     return (
       <AuthPage
         mode={pathname === "/login" ? "login" : "register"}
+        notice={authNotice}
         onModeChange={(mode) => navigate(mode === "login" ? "/login" : "/register")}
         onSubmit={handleAuthSubmit}
       />
@@ -397,14 +421,6 @@ function App() {
     return <WorkspaceLayout activePage="Dashboard" onNavigate={handleDashboardNavigate}
       teacherInitial={initials(sessionUser.name) || "T"} onLogout={handleLogout}>
       <LessonWorkspacePage key={materialId} materialId={materialId} onBack={() => navigate("/dashboard")} />
-    </WorkspaceLayout>;
-  }
-
-  if (pathname === "/dashboard/scores") {
-    return <WorkspaceLayout activePage="Worksheet Scores" onNavigate={handleDashboardNavigate}
-      teacherInitial={initials(sessionUser.name) || "T"} onLogout={handleLogout}>
-      <WorksheetScoresPage />
-      <footer className="page-footer">SMARTPLAY <span>·</span> Worksheet assessment records for your classroom.</footer>
     </WorkspaceLayout>;
   }
 
@@ -510,6 +526,12 @@ function App() {
           recommendations, saving, busy, error, editingId, setActiveId, setShowMaterialForm,
           livePrediction, contentItems, handleAssignRecommendation, onAssignMaterial: setAssigningMaterial,
           setShowStudentForm, handleGenerate, setError, setEditingId, handleReview, navigate }}
+        onCreatePracticeModule={(student, areas, pathway = []) => setPracticeModuleContext({
+          student,
+          description: areas.length
+            ? `Teacher-reviewed practice focus from saved feedback: ${areas.map(area => `${area.category} — ${area.value}`).join("; ")}. Suggested steps: ${pathway.flatMap(area => area.steps.map((step, index) => `${area.category} ${index + 1}: ${step}`)).join(" ")}. Review and edit these suggestions before assigning this material.`
+            : "Practice focus: teacher review of this learner's feedback categories. Add the chosen activity instructions.",
+        })}
         recommendations={activeId ? recommendations : classroom.reviews}
       />
       {assigningMaterial && <MaterialEditor material={assigningMaterial} defaultGrade={activeStudent?.grade} onClose={() => setAssigningMaterial(null)} onSave={async metadata => {
@@ -520,6 +542,15 @@ function App() {
       {showMaterialForm && (
           <MaterialEditor defaultGrade={activeStudent?.grade} onClose={() => setShowMaterialForm(false)} onSave={handleMaterialSave} />
         )}
+      {practiceModuleContext && <MaterialEditor
+        key={practiceModuleContext.student.id}
+        defaultGrade={practiceModuleContext.student.grade}
+        defaultStudentId={practiceModuleContext.student.id}
+        defaultStudentName={practiceModuleContext.student.name}
+        defaultDescription={practiceModuleContext.description}
+        onClose={() => setPracticeModuleContext(null)}
+        onSave={handleMaterialSave}
+      />}
       {showStudentForm && (
         <LearnerModal
           onClose={() => setShowStudentForm(false)}

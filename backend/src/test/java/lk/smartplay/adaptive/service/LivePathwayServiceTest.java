@@ -49,6 +49,7 @@ class LivePathwayServiceTest {
         var saved = result.recommendations().get(0);
         assertEquals(LearningRecommendation.Status.PENDING, saved.getStatus());
         assertEquals("L1", saved.getLessonId()); assertEquals("assessment:a1", saved.getEvidenceId());
+        assertEquals("Grade 1", saved.getStudentGrade());
         assertEquals("Needs Practice", saved.getPredictedOutcome()); assertEquals(0.7, saved.getConfidence());
         ArgumentCaptor<Map<String,Object>> profile = ArgumentCaptor.captor();
         verify(ai).selectPathway(profile.capture());
@@ -61,8 +62,20 @@ class LivePathwayServiceTest {
     @Test void noMatchDoesNotPersistAndMissingEvidenceDoesNotCallPython() {
         assertThrows(ResponseStatusException.class, () -> service.generate("s1", "owner", request));
         verifyNoInteractions(ai, recommendations);
-        evidence(); when(ai.selectPathway(any())).thenReturn(prediction(List.of()));
-        assertEquals("No suitable validated activity", service.generate("s1", "owner", request).status());
+        evidence(); when(ai.selectPathway(any())).thenReturn(new LivePathwayResponse("Needs Practice", Map.of("Needs Practice", 0.7, "Successful", 0.2, "Waiting", 0.1), "model-hash", "No pathway saved. Birds: no approved bird objective.", List.of(), "PERSONALIZED"));
+        assertTrue(service.generate("s1", "owner", request).status().contains("no approved bird objective"));
+        verifyNoInteractions(recommendations);
+    }
+    @Test void successfulVerifiedOutcomeCannotPersistRemedialActivitiesFromAStaleAiResponse() {
+        evidence();when(ai.selectPathway(any())).thenReturn(prediction(List.of(activity())));
+        var snapshot=new LiveFeatureService.Snapshot(request.features(),List.of("Sound awareness"),List.of(),List.of("assessment:a1"),java.time.Instant.now());
+        var result=service.generateForMilestone("s1","owner",3,snapshot,List.of(),List.of("assessment:a1"),
+            Map.of("application_outcome","Successful","verified_performance_percentage",82.5),ignored->{ });
+        assertTrue(result.recommendations().isEmpty());
+        assertEquals("Needs Practice",result.predictedOutcome());
+        assertTrue(result.status().contains("no remedial pathway was generated"));
+        ArgumentCaptor<Map<String,Object>> profile=ArgumentCaptor.captor();verify(ai).selectPathway(profile.capture());
+        assertEquals("Successful",profile.getValue().get("application_outcome"));
         verifyNoInteractions(recommendations);
     }
     @Test void invalidPythonEvidenceAndForeignMaterialDoNotPersist() {

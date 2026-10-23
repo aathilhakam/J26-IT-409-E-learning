@@ -43,7 +43,7 @@ class RecommendationMilestonePersistenceTest {
     void complete(int count,Student s) throws Exception {int offset=(int)worksheetRepository.findByStudentIdOrderByAssessedAtDesc(s.getId()).stream().filter(AssessmentResult::isWorksheet).count();for(int i=0;i<count;i++){
         var response=mvc.perform(multipart("/api/content").file(new MockMultipartFile("file","lesson.pdf","application/pdf","%PDF-1.7 isolated milestone".getBytes())).param("title","Development lesson").param("grade","Grade 1").param("category","Worksheet").param("assignmentMode","STUDENTS").param("studentIds",s.getId()).with(user(email).roles("TEACHER")).with(csrf())).andExpect(status().isCreated()).andReturn().getResponse();
         String material=mapper.readTree(response.getContentAsString()).get("id").asText();assignments.update(material,s.getId(),owner,"COMPLETED");
-        worksheetResults.createWorksheet(s.getId(),owner,"score:"+material,material,"Development lesson","Mathematics",java.time.LocalDate.now().minusDays(offset+i),Math.min(10,6.0+offset+i),"Observed score for lesson "+(offset+i+1));
+        worksheetResults.createWorksheet(s.getId(),owner,"score:"+material,material,"Development lesson","Mathematics",java.time.LocalDate.now().minusDays(offset+i),Math.min(10,6.0+offset+i),"Observed score for lesson "+(offset+i+1),1,10.0,"COMPLETED");
     }}
     JsonNode evidence(Student s) throws Exception {var fixture=mapper.readTree(getClass().getResourceAsStream("/fixtures/st001-source-records.json"));String base="/api/students/"+s.getId();for(var row:fixture.get("assessments"))post(base+"/assessments",row,201);for(var row:fixture.get("activities"))post(base+"/records",row,200);post(base+"/observations",fixture.get("observation"),201);for(var row:fixture.get("history"))post(base+"/history",row,201);return fixture;}
     void prediction(boolean match){when(ai.selectPathway(any())).thenAnswer(call->{Map<String,Object> profile=call.getArgument(0);List<?> needs=(List<?>)profile.get("needs");Map<?,?> need=(Map<?,?>)needs.get(0);return new LivePathwayResponse("Successful",Map.of("Successful",.8,"Waiting",.1,"Needs Practice",.1),"unchanged-model-hash",match?"Recommendation available":"No suitable validated activity",match?List.of(new LivePathwayResponse.Activity("CURRICULUM-1","Math","Number Recognition","Recognize numbers","Number cards","Beginner","Number sequence knowledge",(String)need.get("assessment_id"),"Persisted measured number evidence")):List.of());});}
@@ -54,15 +54,39 @@ class RecommendationMilestonePersistenceTest {
         assertEquals(0,service.progress(owner,second.getId()).completedLessons());
         complete(3,first);post(endpoint(first),Map.of(),200);complete(3,first);post(endpoint(first),Map.of(),200);post(endpoint(first),Map.of(),200);
         assertTrue(events.stream(LessonCompletionEvent.class).allMatch(e->e.ownerId().equals(owner)&&e.studentId().equals(first.getId())));assertEquals(9,events.stream(LessonCompletionEvent.class).count());
-        var progress=service.progress(owner,first.getId());assertEquals(9,progress.completedLessons());assertEquals(12,progress.nextMilestone());assertEquals(3,progress.milestones().size());assertEquals(3,recommendations.count());
-        org.mockito.ArgumentCaptor<Map<String,Object>> capture=org.mockito.ArgumentCaptor.captor();verify(ai,times(3)).selectPathway(capture.capture());
+        var progress=service.progress(owner,first.getId());assertEquals(9,progress.completedLessons());assertEquals(12,progress.nextMilestone());assertEquals(3,progress.milestones().size());assertEquals(1,recommendations.count());
+        assertEquals("SUCCESSFUL",progress.milestones().get(1).status); // 81.25% at lesson six; no remedial pathway at later successful milestones.
+        assertEquals("SUCCESSFUL",progress.milestones().get(2).status);
+        org.mockito.ArgumentCaptor<Map<String,Object>> capture=org.mockito.ArgumentCaptor.captor();verify(ai,times(6)).selectPathway(capture.capture());
         var features=(Map<?,?>)capture.getAllValues().get(0).get("features");assertEquals(LiveFeatureService.FEATURE_ORDER,new ArrayList<>(features.keySet()));
         fixture.get("expectedFeatures").properties().forEach(e->{if(e.getValue().isNumber())assertEquals(e.getValue().asDouble(),((Number)features.get(e.getKey())).doubleValue(),1e-8);else assertEquals(e.getValue().asText(),features.get(e.getKey()));});
         for(var r:recommendations.findAll()){assertEquals(owner,r.getTeacherOwnerId());assertTrue(Set.of(3,6,9).contains(r.getCompletionMilestone()));assertEquals(LearningRecommendation.Status.PENDING,r.getStatus());assertEquals("unchanged-model-hash",r.getModelVersion());assertNotNull(r.getFeaturesGeneratedAt());assertFalse(r.getSourceEvidenceIds().isEmpty());}
     }
     @Test void insufficientDataIsPersistedAndCanBeRetriedAfterRealEvidenceArrives() throws Exception {
-        complete(3,first);var state=post(endpoint(first),Map.of(),200);assertEquals("INSUFFICIENT_DATA",state.get("milestones").get(0).get("status").asText());assertTrue(state.toString().contains("classroom activities"));verifyNoInteractions(ai);
+        complete(3,first);var state=post(endpoint(first),Map.of(),200);assertEquals("INSUFFICIENT_DATA",state.get("milestones").get(0).get("status").asText());assertEquals("INSUFFICIENT_DATA",state.get("milestones").get(0).get("applicationOutcome").asText());assertEquals(3,state.get("milestones").get(0).get("verifiedAssessmentCount").asInt());assertEquals(70.0,state.get("milestones").get(0).get("verifiedPerformancePercentage").asDouble());assertTrue(state.toString().contains("Pre_Test"));verifyNoInteractions(ai);
         evidence(first);prediction(true);post(endpoint(first),Map.of(),200);assertEquals("GENERATED",service.progress(owner,first.getId()).milestones().get(0).status);assertEquals(1,recommendations.count());
+    }
+
+    @Test void changedScoresRefreshTerminalMilestoneOutcomeWithoutDuplicatingPathways() throws Exception {
+        evidence(first);complete(3,first);
+        when(ai.selectPathway(any())).thenAnswer(call->{Map<String,Object> profile=call.getArgument(0);String outcome=(String)profile.get("application_outcome");
+            var probabilities=Map.of("Needs Practice",.505,"Successful",.390,"Waiting",.105);
+            if("Successful".equals(outcome))return new LivePathwayResponse("Needs Practice",probabilities,"unchanged-model-hash","No remedial pathway",List.of());
+            var need=(Map<?,?>)((List<?>)profile.get("needs")).get(0);
+            return new LivePathwayResponse("Needs Practice",probabilities,"unchanged-model-hash","Recommendation available",List.of(
+                new LivePathwayResponse.Activity("CURRICULUM-1","Math","Number Recognition","Recognize numbers","Number cards","Beginner","Number sequence knowledge",(String)need.get("assessment_id"),"Persisted measured evidence")));
+        });
+        var firstState=post(endpoint(first),Map.of(),200);var firstMilestone=firstState.get("milestones").get(0);
+        assertEquals("Needs Practice",firstMilestone.get("applicationOutcome").asText());assertEquals(72.0,firstMilestone.get("verifiedPerformancePercentage").asDouble());
+        assertEquals("Needs Practice",firstMilestone.get("predictedOutcome").asText());assertEquals("GENERATED",firstMilestone.get("status").asText());assertEquals(1,recommendations.count());
+        post(endpoint(first),Map.of(),200);verify(ai,times(1)).selectPathway(any());assertEquals(1,recommendations.count());
+
+        for(var result:worksheetRepository.findByStudentIdOrderByAssessedAtDesc(first.getId()))if(result.isWorksheet()){result.setScore(9);worksheetRepository.save(result);}
+        var refreshed=post(endpoint(first),Map.of(),200).get("milestones").get(0);
+        assertEquals("Successful",refreshed.get("applicationOutcome").asText());assertEquals(84.0,refreshed.get("verifiedPerformancePercentage").asDouble());
+        assertEquals("Needs Practice",refreshed.get("predictedOutcome").asText());assertEquals("SUCCESSFUL",refreshed.get("status").asText());
+        assertEquals("NO_REMEDIAL_PATHWAY_SUCCESSFUL",refreshed.get("pathwayDecision").asText());assertEquals(1,recommendations.count());
+        post(endpoint(first),Map.of(),200);verify(ai,times(2)).selectPathway(any());assertEquals(1,recommendations.count());
     }
     @Test void scoresForUncompletedAssignmentsAndDuplicateScoreRowsDoNotInflateMilestoneCount() throws Exception {
         complete(1,first);

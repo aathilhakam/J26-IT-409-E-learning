@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 function BrandMark() {
   return (
@@ -11,11 +11,13 @@ function BrandMark() {
   );
 }
 
-export function AuthPage({ mode = "register", onModeChange, onSubmit }) {
+export function AuthPage({ mode = "register", onModeChange, onSubmit, notice: externalNotice = "" }) {
   const [showPassword, setShowPassword] = useState(false);
   const [notice, setNotice] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const isRegister = mode === "register";
+
+  useEffect(() => setNotice(externalNotice), [externalNotice]);
 
   async function handleSubmit(event) {
     event.preventDefault();

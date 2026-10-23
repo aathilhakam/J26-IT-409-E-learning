@@ -21,6 +21,7 @@ import lk.smartplay.adaptive.service.*;
 class LivePathwayControllerTest {
     @Autowired MockMvc mvc;
     @MockitoBean LivePathwayService pathways;
+    @MockitoBean lk.smartplay.adaptive.service.BinaryPrototypePredictionService prototype;
     @MockitoBean TeacherAccountService accounts;
     @MockitoBean TeacherAccountRepository accountRepository;
 

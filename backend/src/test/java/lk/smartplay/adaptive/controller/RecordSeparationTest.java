@@ -23,6 +23,7 @@ class RecordSeparationTest {
     @Autowired MockMvc mvc;
     @MockitoBean StudentRepository students;
     @MockitoBean LearningRecordRepository records;
+    @MockitoBean ClassroomActivityRepository classroomActivities;
     @MockitoBean AssessmentResultRepository assessments;
     @MockitoBean TeacherAccountRepository accounts;
     @MockitoBean TeacherAccountService accountService;

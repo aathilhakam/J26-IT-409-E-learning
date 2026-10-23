@@ -19,11 +19,16 @@ const compiled = buildSync({
       export { default as ArchiveStudentDialog } from "./features/students/components/ArchiveStudentDialog";
       export { default as ContentPage } from "./pages/ContentPage";
       export { default as AIRecommendationPanel } from "./features/recommendations/components/AIRecommendationPanel";
+      export { default as TeacherOutcomeReview } from "./features/recommendations/components/TeacherOutcomeReview";
+      export { latestPrediction, OutcomeDecision, predictionModelClassStatus } from "./features/recommendations/components/AIRecommendationPanel";
       export { default as StudentPathways } from "./features/recommendations/components/StudentPathways";
       export { default as WorksheetScores } from "./features/worksheets/WorksheetScores";
+      export { default as PrototypeFeatureSnapshotImport } from "./features/activities/PrototypeFeatureSnapshotImport";
+      export { completedPracticeAreas } from "./features/recommendations/components/PrototypePracticeAlerts";
       export { WorksheetScorePreview } from "./features/worksheets/WorksheetScores";
       export { default as LearningEvidence } from "./features/evidence/LearningEvidence";
-      export { default as WorksheetPrintActions } from "./features/worksheets/WorksheetPrintActions";`,
+      export { default as WorksheetPrintActions } from "./features/worksheets/WorksheetPrintActions";
+      export { WorkspaceLayout } from "./components/layout/WorkspaceLayout";`,
     resolveDir: fileURLToPath(new URL("../src", import.meta.url)),
   },
   bundle: true, write: false, platform: "node", format: "cjs",
@@ -31,7 +36,7 @@ const compiled = buildSync({
 });
 const compiledModule = { exports: {} };
 new Function("require", "module", "exports", compiled.outputFiles[0].text)(createRequire(import.meta.url), compiledModule, compiledModule.exports);
-const { LivePredictionState, RecommendationCard, AssignedMaterials, MaterialEditor, LearningMaterialForm, DashboardPage, StudentProfilePage, ArchiveStudentDialog, ContentPage, AIRecommendationPanel, StudentPathways, WorksheetScores, WorksheetScorePreview, LearningEvidence, WorksheetPrintActions } = compiledModule.exports;
+const { LivePredictionState, RecommendationCard, AssignedMaterials, MaterialEditor, LearningMaterialForm, DashboardPage, StudentProfilePage, ArchiveStudentDialog, ContentPage, AIRecommendationPanel, TeacherOutcomeReview, latestPrediction, OutcomeDecision, predictionModelClassStatus, StudentPathways, WorksheetScores, WorksheetScorePreview, PrototypeFeatureSnapshotImport, completedPracticeAreas, LearningEvidence, WorksheetPrintActions, WorkspaceLayout } = compiledModule.exports;
 const render = (component, props) => renderToStaticMarkup(React.createElement(component, props));
 
 test("empty roster keeps archive success visible and import/create controls available", () => {
@@ -57,16 +62,54 @@ test("archive dialog retains confirmation, failure text, and busy controls", () 
   assert.match(html, /Removing…/);
 });
 
-test("content page retains upload formats and size limit", () => {
+test("content page retains upload formats and per-file size limit", () => {
   const html = render(ContentPage, { items: [] });
   assert.match(html, /up to 20 MB per file/);
   assert.match(html, /\.pdf,.jpg,.jpeg,.png,.webp/);
 });
 
+test("main workspace navigation no longer includes Worksheet Scores", () => {
+  const html = render(WorkspaceLayout, { children: React.createElement("div", null, "Page") });
+  assert.match(html, /Upload &amp; Content/);
+  assert.doesNotMatch(html, /Worksheet Scores|dashboard\/scores/);
+});
+
+test("teacher practice alerts identify only completed saved areas below 75 percent", () => {
+  const areas = completedPracticeAreas([
+    { materialId: "song", worksheetTitle: "Song Book", subject: "Songs", score: 5, maxScore: 10, completionStatus: "COMPLETED" },
+    { materialId: "song", worksheetTitle: "Song Book", subject: "Songs", score: 6, maxScore: 10, completionStatus: "COMPLETED" },
+    { materialId: "math", worksheetTitle: "Math", score: 4, maxScore: 10, completionStatus: "IN_PROGRESS" },
+    { materialId: "reading", worksheetTitle: "Reading", score: 8, maxScore: 10, completionStatus: "COMPLETED" },
+  ]);
+  assert.equal(areas.length, 1);
+  assert.equal(areas[0].title, "Song Book");
+  assert.ok(Math.abs(areas[0].percentage - 55) < 1e-9);
+});
+
+test("prototype snapshot panel exposes authenticated lesson batch workflow", () => {
+  const html = render(PrototypeFeatureSnapshotImport, { grade: "Grade 1", materials: [{ id: "song-book", title: "Song Book – Grade 1" }] });
+  assert.match(html, /Song Book lesson \/ worksheet material/);
+  assert.match(html, /Preview Features/);
+  assert.match(html, /Import Feature Snapshots/);
+  assert.match(html, /Verify Feedback &amp; Run 10-Feature Batch/);
+  assert.match(html, /Experimental predictions are not teacher-verified outcomes/);
+});
+
 test("AI feature renders separately with an empty student selection", () => {
   const html = render(AIRecommendationPanel, { studentId: "" });
   assert.match(html, /Random Forest prediction/);
-  assert.match(html, /Personalized activities and teacher decisions appear separately/);
+  assert.match(html, /Select a student to view their model evidence/);
+  assert.doesNotMatch(html, /Personalized activities and teacher decisions appear separately/);
+});
+
+test("model status distinguishes the active three-class model from a binary class set", () => {
+  assert.match(predictionModelClassStatus({ "Needs Practice": 0.5, Successful: 0.4, Waiting: 0.1 }), /original three-class Random Forest.*No validated binary candidate is deployed/);
+  assert.equal(predictionModelClassStatus({ Successful: 0.55, "Needs Practice": 0.45 }), "Active model classes: Needs Practice and Successful.");
+});
+
+test("teacher can reach approved-label export even when selected student evidence is still loading", () => {
+  const html = render(TeacherOutcomeReview, { student: { id: "s1", name: "Amaya Silva" } });
+  assert.match(html, /Download approved labels for training review/);
 });
 
 test("student pathway panel uses saved recommendations and does not repeat model predictions", () => {
@@ -77,10 +120,17 @@ test("student pathway panel uses saved recommendations and does not repeat model
   assert.doesNotMatch(html, /Predicted class:/);
 });
 
-test("student evidence keeps assessment entry and saved evidence views without observation or lesson entry forms", () => {
+test("empty pathway panel explains a persisted curriculum mapping gap", () => {
+  const html = render(StudentPathways, { student: { id: "s1", name: "Amaya Silva", grade: "Grade 1" }, initial: [], initialMilestones: [{ status: "NO_MATCH", message: "Fruits: no approved Grade 1 fruit-naming objective." }] });
+  assert.match(html, /No pathway saved · curriculum match needed/);
+  assert.match(html, /no approved Grade 1 fruit-naming objective/);
+  assert.match(html, /Recommendations are saved only when an approved/);
+});
+
+test("student evidence shows the three saved evidence views without standalone observation or lesson entry forms", () => {
   const html = render(LearningEvidence, { student: { id: "s1", name: "Amaya Silva" } });
-  assert.match(html, /Assessment results/);
-  assert.match(html, /Teacher observations/);
+  assert.match(html, /Assessment activity history/);
+  assert.match(html, /Classroom activity history/);
   assert.match(html, /Historical lessons/);
   assert.doesNotMatch(html, /Save Historical Lesson|Lesson identifier|Sequence number|Occurrence date\/time/);
   assert.doesNotMatch(html, /Save observation|Record teacher observation/);
@@ -93,21 +143,21 @@ test("worksheet score workflow requires a material and previews the standard sco
   assert.match(empty, /<option value="" selected="">Select a worksheet material<\/option>/);
   assert.match(empty, /disabled="">Download Score Template/);
   assert.match(empty, /disabled="">Preview Scores/);
-  for (const label of ["Worksheet Assessment Scores", "Download Score Template", "Upload Completed Score Template", "Preview Scores", "Import Scores"]) assert.match(empty, new RegExp(label));
+  for (const label of ["Classroom activity", "Download Score Template", "Upload Completed Score Template", "Preview Scores", "Import Scores"]) assert.match(empty, new RegExp(label));
   assert.match(empty, /disabled="">Import Scores/);
-  assert.match(empty, /0–10/);
+  assert.match(empty, /Scores must be 0–10/);
   assert.doesNotMatch(empty, /Oshadi Madushanka|Bimsara Gunawardena|value="8"/);
 });
 
-test("worksheet score preview renders the exact eight template columns and uploaded values in order", () => {
+test("worksheet score preview omits time taken and teacher feedback", () => {
   const html = render(WorksheetScorePreview, {
     preview: { valid: 1, invalid: 0, blank: 0, existing: 0 },
-    rows: [{ row: 2, studentId: "stu-1", studentName: "Ashen Wijesinghe", grade: "Grade 1", worksheetId: "mat-1", title: "Fruits", subject: "English", scoreValue: "8.5", score: 8.5, feedback: "Good work", status: "VALID" }],
+    rows: [{ row: 2, studentId: "stu-1", studentName: "Ashen Wijesinghe", grade: "Grade 1", worksheetId: "mat-1", title: "Fruits", subject: "English", scoreValue: "8.5", score: 8.5, feedback: "Good work", attempts: 2, timeTakenMinutes: 15, completionStatus: "COMPLETED", status: "VALID" }],
   });
   const headings = [...html.matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map(match => match[1]);
-  assert.deepEqual(headings, ["Student ID", "Student Name", "Grade", "Worksheet ID", "Worksheet Title", "Subject", "Score / 10", "Teacher Feedback"]);
+  assert.deepEqual(headings, ["Student ID", "Student Name", "Grade", "Worksheet ID", "Worksheet Title", "Score / 10", "Attempts", "Status"]);
   const cells = [...html.matchAll(/<td>(.*?)<\/td>/g)].map(match => match[1]);
-  assert.deepEqual(cells, ["stu-1", "Ashen Wijesinghe", "Grade 1", "mat-1", "Fruits", "English", "8.5", "Good work"]);
+  assert.deepEqual(cells, ["stu-1", "Ashen Wijesinghe", "Grade 1", "mat-1", "Fruits", "8.5", "2", "COMPLETED"]);
 });
 
 test("worksheet print actions expose original worksheet viewing and printing without an answer key", () => {
@@ -127,13 +177,19 @@ test("dashboard renders its greeting and empty classroom without crashing", () =
   assert.match(html, /Teacher!/);
   assert.match(html, /No classroom lessons assigned yet/);
   assert.match(html, /Lessons remaining/);
+  assert.match(html, /Students needing practice/);
+  assert.match(html, /aria-expanded="false"/);
+  assert.match(html, /practice-alert-toggle/);
 });
 
-test("dashboard renders populated progress, learning activity and pending reviews", () => {
+test("dashboard renders populated progress and activity without the removed pathway feed", () => {
   const student = { id: "1", name: "Amaya Silva", grade: "Grade 1" };
   const html = render(DashboardPage, {
     ...dashboardProps, activeId: "1", students: [student], activeStudent: student,
     average: 70, profile: { assessmentCount: 1 },
+    classroom: {
+      lessons: [{ id: "m1", title: "Reading practice", grade: "Grade 1", assigned: 18, completed: 3, uploadedAt: "2026-10-20T00:00:00Z" }],
+    },
     areas: [
       { domain: "Literacy", averagePercentage: 80 },
       { domain: "Numeracy", averagePercentage: 60 },
@@ -141,11 +197,10 @@ test("dashboard renders populated progress, learning activity and pending review
     records: [{ id: "r1", domain: "Literacy", score: 4, maxScore: 5, assessedAt: "2026-10-20" }],
     recommendations: [{ id: "p1", status: "PENDING", domain: "Numeracy", activityTitle: "Count blocks", createdAt: "2026-10-20", confidence: 0.8 }],
   });
-  assert.match(html, /Count blocks/);
-  assert.match(html, /Strongest area/);
-  assert.match(html, /Explore Numeracy/);
-  assert.match(html, /Count blocks/);
-  assert.match(html, /Lessons advance automatically/);
+  assert.doesNotMatch(html, /Learning pathways for every student|Random Forest pathways are generated|Personalized practice pathways|Common learning pathways/);
+  assert.match(html, /id="pathways"/);
+  assert.doesNotMatch(html, /LEARNER PROFILE|NEXT CLASSROOM STEP|Build a learning journey|Add a learner to view their learning areas and progress/);
+  assert.match(html, /Reading practice/);
 });
 
 test("material action opens a material-only dialog without learning record tabs or score fields", () => {
@@ -224,6 +279,34 @@ test("live prediction displays loading, insufficient data, actual class probabil
   const html = render(LivePredictionState, { state: { predictedOutcome: "Waiting", probabilities: { Waiting: 0.7, Successful: 0.2, "Needs Practice": 0.1 }, status: "No suitable validated activity" } });
   assert.match(html, /Random Forest prediction: Waiting/); assert.match(html, /70.0%/);
   assert.match(html, /class probability/); assert.match(html, /No suitable validated activity/);
+});
+
+test("saved milestone keeps raw Random Forest class separate from score-based final outcome", () => {
+  const prediction = latestPrediction([{ source: "RANDOM_FOREST", predictedOutcome: "Needs Practice", predictionProbabilities: { "Needs Practice": 0.505, Successful: 0.39, Waiting: 0.105 }, modelVersion: "rf-v1", featuresGeneratedAt: "2026-10-23" }], { milestones: [{ predictedOutcome: "Needs Practice", applicationOutcome: "Successful", verifiedPerformancePercentage: 82.5, verifiedAssessmentCount: 4, probabilities: { "Needs Practice": 0.505 }, updatedAt: "2026-10-22", status: "ERROR", message: "Configure inference token", assessmentEvidence: [{ assessmentResultId: "a1", title: "Fruits", score: 8, maximumScore: 10, percentage: 80, completionStatus: "COMPLETED" }] }] });
+  assert.equal(prediction.label, "Needs Practice");
+  assert.equal(prediction.applicationOutcome, "Successful");
+  assert.equal(prediction.verifiedPerformancePercentage, 82.5);
+  assert.equal(prediction.verifiedAssessmentCount, 4);
+  assert.match(prediction.discrepancy, /Random Forest predicted Needs Practice; verified score policy classified Successful/);
+  assert.equal(prediction.version, "rf-v1");
+  assert.equal(prediction.assessmentEvidence.length, 1);
+  const outcomeHtml = render(OutcomeDecision, { prediction });
+  assert.match(outcomeHtml, /Final application outcome: Successful/);
+  assert.match(outcomeHtml, /82\.50%/);
+  assert.match(outcomeHtml, /4 valid completed assessment/);
+  assert.match(outcomeHtml, /Fruits: 8 \/ 10 \(80\.00%\)/);
+  assert.match(outcomeHtml, /calculated separately from the Random Forest prediction/);
+  assert.match(outcomeHtml, /Configure inference token/);
+  assert.match(outcomeHtml, /saved Random Forest result was retained/);
+});
+
+test("application outcome remains visible without a Random Forest class when features are incomplete", () => {
+  const prediction = latestPrediction([], { milestones: [{ applicationOutcome: "INSUFFICIENT_DATA", verifiedPerformancePercentage: 82.5, verifiedAssessmentCount: 4, updatedAt: "2026-10-22" }] });
+  assert.equal(prediction.label, undefined);
+  const html = render(OutcomeDecision, { prediction });
+  assert.match(html, /Final application outcome: INSUFFICIENT_DATA/);
+  assert.match(html, /82\.50%/);
+  assert.match(html, /required live model features/);
 });
 
 test("approved live recommendations keep teacher assignment controls and class label", () => {

@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.server.ResponseStatusException;
 
 import lk.smartplay.adaptive.dto.ReviewRecommendationRequest;
@@ -13,6 +14,7 @@ import lk.smartplay.adaptive.model.LearningRecommendation.Status;
 import lk.smartplay.adaptive.model.LearningRecord;
 import lk.smartplay.adaptive.repository.LearningRecommendationRepository;
 import lk.smartplay.adaptive.repository.LearningRecordRepository;
+import lk.smartplay.adaptive.repository.ClassroomActivityRepository;
 
 @Service
 public class RecommendationService {
@@ -35,14 +37,22 @@ public class RecommendationService {
 
     private final StudentService studentService;
     private final LearningRecordRepository recordRepository;
+    private final ClassroomActivityRepository classroomActivityRepository;
     private final LearningRecommendationRepository recommendationRepository;
 
     public RecommendationService(
             StudentService studentService,
             LearningRecordRepository recordRepository,
             LearningRecommendationRepository recommendationRepository) {
+        this(studentService, recordRepository, null, recommendationRepository);
+    }
+
+    @Autowired
+    public RecommendationService(StudentService studentService, LearningRecordRepository recordRepository,
+            ClassroomActivityRepository classroomActivityRepository, LearningRecommendationRepository recommendationRepository) {
         this.studentService = studentService;
         this.recordRepository = recordRepository;
+        this.classroomActivityRepository = classroomActivityRepository;
         this.recommendationRepository = recommendationRepository;
     }
 
@@ -54,6 +64,8 @@ public class RecommendationService {
     public LearningRecommendation generate(String studentId, String ownerId) {
         studentService.findById(studentId, ownerId);
         List<LearningRecord> records = recordRepository.findByStudentIdOrderByAssessedAtDesc(studentId);
+        if (classroomActivityRepository != null) records = new java.util.ArrayList<>(records);
+        if (classroomActivityRepository != null) records.addAll(classroomActivityRepository.findByStudentIdOrderByAssessedAtDesc(studentId));
         if (records.isEmpty()) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,

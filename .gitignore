@@ -47,7 +47,17 @@ backend/data/
 /LIVE_INTEGRATION.md
 /REMAINING_REQUIREMENTS.md
 /THREE_LESSON_RECOMMENDATIONS.md
+/BINARY_10_FEACTURE_PROTOTYPE.md
+/LIVE_RANDOM_FOREST_FEATURE_AUDIT.md
+/PERSOLIZED_PATWAY_CURRICULLUM_AUDIT.md
+/RENDOM_FOREST_TWO_CLASS_RETRAIN_AUDIT.md
+/TEACHER_VERIFIED_OUTCOME_LABELING_POLICY.md
+/TW0_CLASS_SCORE_BASED_PATHWAY_DECISION.md
 
 # Local assignment PDFs — do not push
 /IT23194212.pdf
 /TAF-409 (Last Updated one).pdf
+
+# Generated student prediction reports
+/reports/Grade_1_Binary_Prototype_Predictions.xlsx
+/reports/Grade_1_Batch_Random_Forest_Predictions.xlsx

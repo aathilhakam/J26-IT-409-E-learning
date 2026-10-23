@@ -3,7 +3,7 @@ import React, { useEffect, useId, useState } from "react";
 import { Button } from "../../../components";
 import LearningMaterialForm from "./LearningMaterialForm";
 
-export default function MaterialEditor({ material, defaultGrade, onSave, onClose }) {
+export default function MaterialEditor({ material, defaultGrade, defaultStudentId, defaultStudentName, defaultDescription, onSave, onClose }) {
   const id = useId();
   const [busy, setBusy] = useState(false);
   const [students, setStudents] = useState([]);
@@ -24,13 +24,13 @@ export default function MaterialEditor({ material, defaultGrade, onSave, onClose
           <span className="material-editor-icon" aria-hidden="true">▤</span>
           <div>
             <span className="material-editor-eyebrow">YOUR TEACHING LIBRARY</span>
-            <h2 id={id}>{material ? "Edit learning material" : "Add learning material"}</h2>
-            <p>{material ? "Update the details of your classroom resource." : "Give your next lesson a resource worth keeping."}</p>
+            <h2 id={id}>{material ? "Edit learning material" : defaultStudentId ? "Create practice module" : "Add learning material"}</h2>
+            <p>{material ? "Update the details of your classroom resource." : defaultStudentId ? `Create a teacher-prepared practice resource for ${defaultStudentName || "this student"}.` : "Give your next lesson a resource worth keeping."}</p>
           </div>
         </header>
         <div className="material-editor-context"><span aria-hidden="true">●</span> Teacher-only <span>·</span> PDF & images <span>·</span> Up to 20 MB</div>
         {rosterError && <p role="alert" className="content-queue-error">{rosterError}</p>}
-        <LearningMaterialForm students={students} initialMaterial={material} defaultGrade={defaultGrade} onSave={onSave} onCancel={onClose} onBusyChange={setBusy} />
+        <LearningMaterialForm students={students} initialMaterial={material} defaultGrade={defaultGrade} defaultStudentId={defaultStudentId} defaultStudentName={defaultStudentName} defaultDescription={defaultDescription} onSave={onSave} onCancel={onClose} onBusyChange={setBusy} />
       </section>
     </div>
   );

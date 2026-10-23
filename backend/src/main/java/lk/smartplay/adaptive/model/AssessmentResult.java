@@ -62,6 +62,10 @@ public class AssessmentResult {
         return id;
     }
 
+    public void setId(String id) {
+        this.id = id;
+    }
+
     public String getStudentId() {
         return studentId;
     }

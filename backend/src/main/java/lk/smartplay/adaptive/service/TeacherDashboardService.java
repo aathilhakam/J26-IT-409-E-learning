@@ -3,6 +3,7 @@ package lk.smartplay.adaptive.service;
 import java.time.Instant;
 import java.util.*;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import lk.smartplay.adaptive.model.*;
@@ -12,6 +13,7 @@ import lk.smartplay.adaptive.repository.*;
 public class TeacherDashboardService {
     private final StudentRepository students;
     private final LearningRecordRepository records;
+    private final ClassroomActivityRepository classroomActivities;
     private final AssessmentResultRepository assessments;
     private final LearningRecommendationRepository recommendations;
     private final ContentAssetRepository materials;
@@ -19,7 +21,12 @@ public class TeacherDashboardService {
     private final StudentAssignmentService assignmentService;
     public TeacherDashboardService(StudentRepository students, LearningRecordRepository records, AssessmentResultRepository assessments,
             LearningRecommendationRepository recommendations, ContentAssetRepository materials, StudentAssignmentRepository assignments, StudentAssignmentService assignmentService) {
-        this.students=students; this.records=records; this.assessments=assessments; this.recommendations=recommendations; this.materials=materials; this.assignments=assignments; this.assignmentService=assignmentService;
+        this(students, records, null, assessments, recommendations, materials, assignments, assignmentService);
+    }
+    @Autowired
+    public TeacherDashboardService(StudentRepository students, LearningRecordRepository records, ClassroomActivityRepository classroomActivities, AssessmentResultRepository assessments,
+            LearningRecommendationRepository recommendations, ContentAssetRepository materials, StudentAssignmentRepository assignments, StudentAssignmentService assignmentService) {
+        this.students=students; this.records=records; this.classroomActivities=classroomActivities; this.assessments=assessments; this.recommendations=recommendations; this.materials=materials; this.assignments=assignments; this.assignmentService=assignmentService;
     }
     public record Statistics(long studentsEnrolled, long learningRecords, double learningProgress, long pendingReviews, long validResults, long teacherMaterials, long classroomLessons, long completedLessons, long remainingLessons, long activityRecords) {}
     public Statistics statistics(String owner, String studentId) {
@@ -29,9 +36,11 @@ public class TeacherDashboardService {
         for (var student : roster) {
             if (studentId != null && !student.getId().equals(studentId)) continue;
             var activity = records.findByStudentIdOrderByAssessedAtDesc(student.getId());
+            var classroomActivity = classroomActivities == null ? List.<ClassroomActivity>of() : classroomActivities.findByStudentIdOrderByAssessedAtDesc(student.getId());
             var results = assessments.findByStudentIdOrderByAssessedAtDesc(student.getId());
-            count += activity.size()+results.size();
+            count += activity.size()+classroomActivity.size()+results.size();
             for (var row : activity) if (valid(row.getScore(),row.getMaxScore())) { valid++; }
+            for (var row : classroomActivity) if (valid(row.getScore(),row.getMaxScore())) { valid++; }
             for (var row : results) if (valid(row.getScore(),row.getMaxScore())) { valid++; }
             pending += recommendations.findByStudentIdOrderByCreatedAtDesc(student.getId()).stream().filter(r -> r.getStatus()==LearningRecommendation.Status.PENDING).count();
         }

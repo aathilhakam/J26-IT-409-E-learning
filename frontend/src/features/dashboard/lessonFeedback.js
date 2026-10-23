@@ -9,12 +9,12 @@ export function isLessonPath(path) {
 export function emptyFeedback() {
   return { ...Object.fromEntries(OBSERVATION_FIELDS.map(([key]) => [key, ""])), demonstratedSkills: "", question: "", studentAnswer: "", improvement: "", feedback: "", status: "" };
 }
-export const SHARED_KEYS = [...OBSERVATION_FIELDS.filter(([key]) => key !== "learningDifficulty").map(([key]) => key), "improvement", "feedback"];
+export const SHARED_KEYS = [...OBSERVATION_FIELDS.map(([key]) => key), "improvement", "feedback"];
 export const canEditFeedback = row => row.activeStudent && row.submissionStatus !== "SUBMITTED";
 export function applySavedFeedback(row, record) {
   return { ...row, ...record.observation, ...Object.fromEntries(["question", "studentAnswer", "improvement", "feedback"].map(key => [key, record[key] || ""])),
     demonstratedSkills: (record.observation?.demonstratedSkills || []).join("\n"), status: record.activityStatus || "", draftKey: record.draftKey,
-    expectedVersion: record.version, submittedAt: record.submittedAt, submissionStatus: record.submissionStatus, dirty: false, individualFields: {}, selected: record.submissionStatus !== "SUBMITTED" && row.activeStudent };
+    expectedVersion: record.version, submittedAt: record.submittedAt, submissionStatus: record.submissionStatus, dirty: false, individualFields: {}, revision: false, selected: record.submissionStatus !== "SUBMITTED" && row.activeStudent };
 }
 export function feedbackRows(workspace) {
   return workspace.lesson.recipients.map(recipient => {
@@ -38,7 +38,6 @@ function feedbackObservation(row) {
   const observation = {};
   for (const [key, label, choices] of OBSERVATION_FIELDS) {
     const value = String(row[key] || "").trim();
-    if (key === "learningDifficulty" && !value) { observation[key] = ""; continue; }
     if (!value) throw new Error(`Choose ${label.toLowerCase()}.`);
     if (!choices.includes(value)) throw new Error("Choose a supported option.");
     observation[key] = value;

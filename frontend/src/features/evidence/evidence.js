@@ -7,7 +7,7 @@ export const OBSERVATION_FIELDS = [
 ];
 export const MEASURES = ["Pre_Test", "Post_Test", "Unit_Test", "Monthly_Test", "Term_Result", "Motor_Skills_Score", "Creativity_Score", "Interactive_Engagement"];
 export const STATUSES = ["Completed", "Not Started", "In Progress"];
-export const COMPONENTS = ["MOTOR_SKILLS", "CREATIVITY_THINKING", "TEACHER_ASSESSMENT", "PARENT_REINFORCEMENT", "OTHER"];
+export const COMPONENTS = ["MOTOR_SKILLS", "CREATIVITY_THINKING", "TEACHER_ASSESSMENT", "CLASSROOM_ACTIVITY", "WORKSHEET_ASSESSMENT", "PARENT_REINFORCEMENT", "OTHER"];
 export function evidencePayload(kind, values, now = Date.now()) {
   const text = (name) => String(values[name] ?? "").trim();
   const required = (name) => { const value = text(name); if (!value) throw new Error("Complete all required fields."); return value; };

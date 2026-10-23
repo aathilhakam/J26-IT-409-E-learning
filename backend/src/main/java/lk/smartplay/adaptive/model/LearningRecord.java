@@ -18,12 +18,21 @@ public class LearningRecord {
     private Integer attempts;
     private Double timeTakenMinutes;
     private String completionStatus;
+    private String activityId;
+    private String teacherOwnerId;
     public void activityDetails(Integer attempts, Double minutes, String status) {
         this.attempts = attempts; this.timeTakenMinutes = minutes; this.completionStatus = status;
     }
     public Integer getAttempts() { return attempts; }
     public Double getTimeTakenMinutes() { return timeTakenMinutes; }
     public String getCompletionStatus() { return completionStatus; }
+    public String getActivityId() { return activityId; }
+    public String getTeacherOwnerId() { return teacherOwnerId; }
+    public void setId(String id) { this.id = id; }
+    public void setActivityIdentity(String activityId, String teacherOwnerId) {
+        this.activityId = activityId;
+        this.teacherOwnerId = teacherOwnerId;
+    }
 
 
     public LearningRecord() {

@@ -2,7 +2,7 @@ import React, { useId, useRef, useState } from "react";
 import { Button, Field } from "../../../components";
 import { FILE_ACCEPT, MATERIAL_TYPES, formatContentSize, materialMetadata, materialError } from "../materials";
 
-export default function LearningMaterialForm({ students = [], initialMaterial, defaultGrade = "Grade 1", onSave, onCancel, onBusyChange }) {
+export default function LearningMaterialForm({ students = [], initialMaterial, defaultGrade = "Grade 1", defaultStudentId, defaultStudentName, defaultDescription = "", onSave, onCancel, onBusyChange }) {
   const editing = Boolean(initialMaterial);
   const id = useId();
   const formRef = useRef(null);
@@ -10,12 +10,12 @@ export default function LearningMaterialForm({ students = [], initialMaterial, d
   const requestKey = useRef(null);
   const lastSubmission = useRef(null);
   const [values, setValues] = useState(() => ({
-    description: initialMaterial?.description || "",
+    description: initialMaterial?.description || defaultDescription,
     subject: initialMaterial?.subject || "", grade: initialMaterial?.grade || defaultGrade || "Grade 1",
     materialType: initialMaterial?.materialType || ({ Lesson: "Lesson Plan", Reading: "Reading Material", Activity: "Activity Sheet", Other: "Other" }[initialMaterial?.category] || "Worksheet"),
   }));
-  const [assignmentMode, setAssignmentMode] = useState(initialMaterial?.assignmentMode === "ALL" ? "STUDENTS" : initialMaterial?.assignmentMode || "LIBRARY");
-  const [studentIds, setStudentIds] = useState(initialMaterial?.assignedStudentIds || []);
+  const [assignmentMode, setAssignmentMode] = useState(initialMaterial?.assignmentMode === "ALL" ? "STUDENTS" : initialMaterial?.assignmentMode || (defaultStudentId ? "STUDENTS" : "LIBRARY"));
+  const [studentIds, setStudentIds] = useState(initialMaterial?.assignedStudentIds || (defaultStudentId ? [defaultStudentId] : []));
   const [assignmentGrade, setAssignmentGrade] = useState(initialMaterial?.assignmentGrade || "");
   const grades = [...new Set(students.map((student) => student.grade))].sort();
   const [file, setFile] = useState(null);
@@ -49,8 +49,8 @@ export default function LearningMaterialForm({ students = [], initialMaterial, d
       requestKey.current = null;
       setSuccess(editing ? "Material updated successfully." : "Material saved successfully.");
       if (!editing) {
-        setValues({ description: "", subject: "", grade: defaultGrade || "Grade 1", materialType: "Worksheet" });
-        setAssignmentMode("LIBRARY"); setStudentIds([]); setAssignmentGrade("");
+        setValues({ description: defaultDescription, subject: "", grade: defaultGrade || "Grade 1", materialType: "Worksheet" });
+        setAssignmentMode(defaultStudentId ? "STUDENTS" : "LIBRARY"); setStudentIds(defaultStudentId ? [defaultStudentId] : []); setAssignmentGrade("");
         setFile(null);
         formRef.current?.reset();
       }
@@ -74,21 +74,21 @@ export default function LearningMaterialForm({ students = [], initialMaterial, d
         </div>
         <Field label="Material type" className="material-type-field"><select name="materialType" value={values.materialType} onChange={update("materialType")} required>{MATERIAL_TYPES.map((type) => <option key={type}>{type}</option>)}</select></Field>
         <div className="material-assignment-fields">
-          <Field label="Student assignment">
+          {defaultStudentId ? <div className="material-target-student"><strong>Assigned only to</strong><span>{defaultStudentName || students.find(student => student.id === defaultStudentId)?.name || "Selected student"} · {defaultGrade || "Grade not recorded"}</span></div> : <Field label="Student assignment">
             <select value={assignmentMode} onChange={(event) => { setAssignmentMode(event.target.value); setError(""); }}>
               <option value="LIBRARY">My private library</option>
               <option value="STUDENTS">Selected students (one or multiple)</option>
               <option value="GRADE">All students in a grade</option>
             </select>
-          </Field>
-          {assignmentMode === "STUDENTS" && <div className="material-student-choices" role="group" aria-label="Select students">
+          </Field>}
+          {assignmentMode === "STUDENTS" && !defaultStudentId && <div className="material-student-choices" role="group" aria-label="Select students">
             {students.map((student) => <label key={student.id}>
               <input type="checkbox" checked={studentIds.includes(student.id)} onChange={(event) => setStudentIds((current) => event.target.checked ? [...current, student.id] : current.filter((id) => id !== student.id))} />
               <span>{student.name} · {student.grade}</span>
             </label>)}
             {!students.length && <p>No active students available.</p>}
           </div>}
-          {assignmentMode === "GRADE" && <Field label="Assign to grade"><select value={assignmentGrade} onChange={(event) => setAssignmentGrade(event.target.value)} required>
+          {assignmentMode === "GRADE" && !defaultStudentId && <Field label="Assign to grade"><select value={assignmentGrade} onChange={(event) => setAssignmentGrade(event.target.value)} required>
             <option value="">Choose a grade</option>{grades.map((grade) => <option key={grade}>{grade}</option>)}
           </select></Field>}
           {assignmentMode !== "LIBRARY" && <small>Assigned to current students when saved. New students can be added by editing this material.</small>}

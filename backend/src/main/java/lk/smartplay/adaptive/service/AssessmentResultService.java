@@ -22,6 +22,8 @@ public class AssessmentResultService {
             "MOTOR_SKILLS",
             "CREATIVITY_THINKING",
             "TEACHER_ASSESSMENT",
+            "CLASSROOM_ACTIVITY",
+            "WORKSHEET_ASSESSMENT",
             "PARENT_REINFORCEMENT",
             "OTHER"
     );
@@ -42,6 +44,13 @@ public class AssessmentResultService {
             CreateAssessmentResultRequest request) {
 
         return repository.save(prepare(studentId,ownerId,request));
+    }
+
+    public AssessmentResult createImported(String studentId, String ownerId,
+            CreateAssessmentResultRequest request, String stableId) {
+        AssessmentResult result = prepare(studentId, ownerId, request);
+        result.setId(stableId);
+        return repository.insert(result);
     }
 
     private AssessmentResult prepare(String studentId,String ownerId,CreateAssessmentResultRequest request) {
@@ -123,8 +132,20 @@ public class AssessmentResultService {
     }
 
     public AssessmentResult createWorksheet(String studentId,String owner,String identity,String material,String title,String subject,java.time.LocalDate date,double score,String feedback) {
+        return createWorksheet(studentId,owner,identity,material,title,subject,date,score,10.0,"WORKSHEET",null,null,"COMPLETED",feedback);
+    }
+
+    public AssessmentResult createWorksheet(String studentId,String owner,String identity,String material,String title,String subject,java.time.LocalDate date,double score,String feedback,Integer attempts,Double timeTakenMinutes,String completionStatus) {
+        return createWorksheet(studentId,owner,identity,material,title,subject,date,score,10.0,"WORKSHEET",attempts,timeTakenMinutes,completionStatus,feedback);
+    }
+
+    public AssessmentResult createWorksheet(String studentId,String owner,String identity,String material,String title,String subject,java.time.LocalDate date,double score,double maxScore,String assessmentType,Integer attempts,Double timeTakenMinutes,String completionStatus) {
+        return createWorksheet(studentId,owner,identity,material,title,subject,date,score,maxScore,assessmentType,attempts,timeTakenMinutes,completionStatus,"");
+    }
+
+    private AssessmentResult createWorksheet(String studentId,String owner,String identity,String material,String title,String subject,java.time.LocalDate date,double score,double maxScore,String assessmentType,Integer attempts,Double timeTakenMinutes,String completionStatus,String feedback) {
         var student=studentService.findById(studentId,owner);
-        var result=prepare(studentId,owner,new CreateAssessmentResultRequest("TEACHER_ASSESSMENT","WORKSHEET",identity,material,score,10.0,null,null,"COMPLETED",feedback,java.util.Map.of()));
+        var result=prepare(studentId,owner,new CreateAssessmentResultRequest("TEACHER_ASSESSMENT",assessmentType,identity,material,score,maxScore,attempts,timeTakenMinutes,completionStatus,feedback,java.util.Map.of()));
         result.worksheetDetails(identity,owner,student.getName(),title,subject,student.getGrade(),material,date);
         return repository.insert(result);
     }

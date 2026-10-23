@@ -25,7 +25,7 @@ public class TeacherObservationService {
         return prepare(studentId,ownerId,request,true);
     }
     public TeacherObservation prepareFeedback(String studentId, String ownerId, CreateTeacherObservationRequest request) {
-        return prepare(studentId,ownerId,request,false);
+        return prepare(studentId,ownerId,request,true);
     }
     private TeacherObservation prepare(String studentId, String ownerId, CreateTeacherObservationRequest request, boolean requireDifficulty) {
         var student = students.findById(studentId, ownerId);

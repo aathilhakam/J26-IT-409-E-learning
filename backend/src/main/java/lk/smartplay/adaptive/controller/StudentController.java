@@ -188,7 +188,7 @@ public class StudentController {
     // =====================================================
 
     @GetMapping("/students/template")
-    public ResponseEntity<Resource> downloadStudentTemplate() {
+    public ResponseEntity<byte[]> downloadStudentTemplate(Authentication authentication) {
 
         Resource resource = new ClassPathResource(
                 "templates/student-import-template.xlsx"
@@ -203,7 +203,30 @@ public class StudentController {
             );
         }
 
-        return ResponseEntity.ok()
+        try (var input = resource.getInputStream();
+                var workbook = new XSSFWorkbook(input);
+                var output = new ByteArrayOutputStream()) {
+            Sheet rosterSheet = workbook.getSheet("Current Students");
+            if (rosterSheet != null) workbook.removeSheetAt(workbook.getSheetIndex(rosterSheet));
+            rosterSheet = workbook.createSheet("Current Students");
+            Row header = rosterSheet.createRow(0);
+            header.createCell(0).setCellValue("Student ID");
+            header.createCell(1).setCellValue("Student Name");
+            var roster = studentService.findAll(ownerId(authentication)).stream()
+                    .sorted(Comparator.comparing(Student::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                    .toList();
+            int rowIndex = 1;
+            for (Student student : roster) {
+                Row row = rosterSheet.createRow(rowIndex++);
+                row.createCell(0).setCellValue(student.getId() == null ? "" : student.getId());
+                row.createCell(1).setCellValue(student.getName() == null ? "" : student.getName());
+            }
+            rosterSheet.createFreezePane(0, 1);
+            rosterSheet.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(0, Math.max(0, rowIndex - 1), 0, 1));
+            rosterSheet.autoSizeColumn(0);
+            rosterSheet.autoSizeColumn(1);
+            workbook.write(output);
+            return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(
                         "application/vnd.openxmlformats-officedocument."
                         + "spreadsheetml.sheet"
@@ -213,7 +236,10 @@ public class StudentController {
                         "attachment; filename=\""
                         + "SmartPlay_Student_Profile_Import_Template.xlsx\""
                 )
-                .body(resource);
+                .body(output.toByteArray());
+        } catch (IOException exception) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not prepare the student template", exception);
+        }
     }
 
     // =====================================================

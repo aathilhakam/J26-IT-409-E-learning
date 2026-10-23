@@ -26,6 +26,9 @@ async function request(path, init = {}) {
   });
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== "undefined" && !["/auth/me", "/auth/login", "/auth/register"].includes(path)) {
+      window.dispatchEvent(new CustomEvent("smartplay-session-expired"));
+    }
     const payload = await response.json().catch(() => null);
 
     const message =
@@ -38,7 +41,7 @@ async function request(path, init = {}) {
     throw error;
   }
 
-  if (method !== "GET" && typeof window !== "undefined" && (/^\/(students|recommendations|worksheet-scores|dashboard\/lessons)/).test(path)) {
+  if (method !== "GET" && typeof window !== "undefined" && (/^\/(students|recommendations|worksheet-scores|assessment-results|classroom-activities|dashboard\/lessons)/).test(path)) {
     window.dispatchEvent(new CustomEvent("smartplay-evidence-updated", { detail: { path, method } }));
   }
   if (response.status === 204) {
@@ -66,6 +69,23 @@ async function requestBlob(path) {
   }
 
   return response.blob();
+}
+
+async function requestDownload(path, init = {}) {
+  const method = init.method ?? "GET";
+  const headers = { Accept: "application/octet-stream", ...(init.body ? { "Content-Type": "application/json" } : {}), ...init.headers };
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(method.toUpperCase())) {
+    csrfToken ??= await loadCsrfToken();
+    headers["X-XSRF-TOKEN"] = csrfToken;
+  }
+  const response = await fetch(`${API_BASE}${path}`, { ...init, credentials: "same-origin", cache: "no-store", headers });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    const error = new Error(payload?.message || payload?.detail || `Request failed (${response.status})`);
+    error.status = response.status;
+    throw error;
+  }
+  return { blob: await response.blob(), feedbackCount: Number(response.headers.get("X-Feedback-Count") || 0), filename: response.headers.get("Content-Disposition")?.match(/filename="?([^";]+)"?/i)?.[1] };
 }
 
 async function loadCsrfToken() {
@@ -120,6 +140,7 @@ export const api = {
   saveLessonFeedbackDrafts: (materialId, payload) => request(`/dashboard/lessons/${encodeURIComponent(materialId)}/feedback/drafts`, { method: "PUT", body: JSON.stringify(payload) }),
   lessonWorkspace: (materialId) => request(`/dashboard/lessons/${encodeURIComponent(materialId)}`),
   saveLessonFeedback: (materialId, payload) => request(`/dashboard/lessons/${encodeURIComponent(materialId)}/feedback`, { method: "POST", body: JSON.stringify(payload) }),
+  downloadLessonTeacherFeedback: (materialId) => requestDownload(`/dashboard/lessons/${encodeURIComponent(materialId)}/feedback/export`),
   completeClassroomLesson: (materialId) => request(`/dashboard/lessons/${encodeURIComponent(materialId)}/complete`, { method: "POST" }),
   classroomLessons: (grade) => request(`/dashboard/lessons${grade ? `?grade=${encodeURIComponent(grade)}` : ""}`),
   completedLessons: (grade) => request(`/dashboard/lessons/history${grade ? `?grade=${encodeURIComponent(grade)}` : ""}`),
@@ -174,6 +195,7 @@ export const api = {
     request(
       `/students/${encodeURIComponent(studentId)}/profile`
     ),
+  prototypeFeatureSnapshot: (studentId) => request(`/students/${encodeURIComponent(studentId)}/prototype-feature-snapshot`),
 
   // =========================================
   // STUDENT EXCEL IMPORT
@@ -228,12 +250,40 @@ export const api = {
     ),
 
   liveFeatures: (studentId) => request(`/recommendations/student/${encodeURIComponent(studentId)}/features`),
-  downloadScoreTemplate: (parameters) => requestBlob(`/worksheet-scores/template?${new URLSearchParams(parameters)}`),
-  previewWorksheetScores: (form) => request("/worksheet-scores/preview", { method: "POST", body: form }),
-  importScores: async (form, token) => {
+  verifiedOutcome: (studentId) => request(`/students/${encodeURIComponent(studentId)}/verified-outcome`),
+  verifyStudentOutcome: (studentId, payload) => request(`/students/${encodeURIComponent(studentId)}/verified-outcome`, { method: "POST", body: JSON.stringify(payload) }),
+  downloadVerifiedOutcomeTrainingExport: () => requestBlob("/teacher/verified-outcomes/training-export"),
+  downloadClassroomActivityTemplate: (grade, activityName = "") => requestBlob(`/classroom-activities/template?${new URLSearchParams({ grade, activityName })}`),
+  previewClassroomActivities: (form) => request("/classroom-activities/preview", { method: "POST", body: form }),
+  importClassroomActivities: async (form, token) => {
     const confirmed = new FormData();
     for (const [key, value] of form.entries()) confirmed.append(key, value);
     confirmed.append("token", token);
+    return request("/classroom-activities/import", { method: "POST", body: confirmed });
+  },
+  downloadPrototypeFeatureTemplate: (grade, worksheetId) => requestBlob(`/classroom-activities/prototype-template?${new URLSearchParams({ grade, worksheetId })}`),
+  previewPrototypeFeatures: (form) => request("/classroom-activities/prototype-preview", { method: "POST", body: form }),
+  importPrototypeFeatures: async (form, token) => {
+    const confirmed = new FormData();
+    for (const [key, value] of form.entries()) confirmed.append(key, value);
+    confirmed.append("token", token);
+    return request("/classroom-activities/prototype-import", { method: "POST", body: confirmed });
+  },
+  downloadScoreTemplate: (parameters) => requestBlob(`/worksheet-scores/template?${new URLSearchParams(parameters)}`),
+  downloadAssessmentResultsTemplate: (grade = "") => requestBlob(`/assessment-results/template?${new URLSearchParams({ grade })}`),
+  previewAssessmentResults: (form) => request("/assessment-results/preview", { method: "POST", body: form }),
+  importAssessmentResults: async (form, token) => {
+    const confirmed = new FormData();
+    for (const [key, value] of form.entries()) confirmed.append(key, value);
+    confirmed.append("token", token);
+    return request("/assessment-results/import", { method: "POST", body: confirmed });
+  },
+  previewWorksheetScores: (form) => request("/worksheet-scores/preview", { method: "POST", body: form }),
+  importScores: async (form, token, completionVerified = false) => {
+    const confirmed = new FormData();
+    for (const [key, value] of form.entries()) confirmed.append(key, value);
+    confirmed.append("token", token);
+    confirmed.append("completionVerified", String(completionVerified));
     return request("/worksheet-scores/import", { method: "POST", body: confirmed });
   },
   worksheetScores: async () => {
@@ -253,6 +303,14 @@ export const api = {
   evaluateMilestones: (studentId) => request(`/recommendations/student/${encodeURIComponent(studentId)}/milestones?retry=true`, { method: "POST" }),
   generateLiveRecommendation: (studentId) =>
     request(`/recommendations/student/${encodeURIComponent(studentId)}/pathway`, { method: "POST" }),
+  predictBinaryPrototype: (studentId) =>
+    request(`/recommendations/student/${encodeURIComponent(studentId)}/prototype-prediction`, { method: "POST" }),
+  listPrototypeProgressionApprovals: () => request("/teacher/prototype-progression-approvals"),
+  approvePrototypeProgression: (studentId, rationale) =>
+    request(`/students/${encodeURIComponent(studentId)}/prototype-progression-approval`, {
+      method: "POST", body: JSON.stringify({ rationale }),
+    }),
+  downloadBinaryPrototypeBatchReport: (rows) => requestDownload("/recommendations/prototype-batch-report", { method: "POST", body: JSON.stringify({ rows }) }),
 
   assignRecommendation: (id, materialId) =>
     request(`/recommendations/${encodeURIComponent(id)}/assign`, {

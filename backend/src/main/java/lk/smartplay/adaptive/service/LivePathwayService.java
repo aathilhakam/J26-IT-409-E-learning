@@ -2,6 +2,7 @@ package lk.smartplay.adaptive.service;
 
 import java.util.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -15,6 +16,7 @@ public class LivePathwayService {
     private final StudentService students;
     private final AssessmentResultRepository assessments;
     private final LearningRecordRepository records;
+    private final ClassroomActivityRepository classroomActivities;
     private final LearningRecommendationRepository recommendations;
     private final ContentAssetRepository materials;
     private final AIRecommendationClient ai;
@@ -22,7 +24,14 @@ public class LivePathwayService {
 
     public LivePathwayService(StudentService students, AssessmentResultRepository assessments, LearningRecordRepository records,
             LearningRecommendationRepository recommendations, ContentAssetRepository materials, AIRecommendationClient ai, LiveFeatureService features) {
+        this(students, assessments, records, null, recommendations, materials, ai, features);
+    }
+    @Autowired
+    public LivePathwayService(StudentService students, AssessmentResultRepository assessments, LearningRecordRepository records,
+            ClassroomActivityRepository classroomActivities, LearningRecommendationRepository recommendations,
+            ContentAssetRepository materials, AIRecommendationClient ai, LiveFeatureService features) {
         this.students = students; this.assessments = assessments; this.records = records;
+        this.classroomActivities = classroomActivities;
         this.recommendations = recommendations; this.materials = materials; this.ai = ai; this.features = features;
     }
 
@@ -73,6 +82,12 @@ public class LivePathwayService {
                         record.getScore() * 100 / record.getMaxScore(), record.getAssessedAt()));
             }
         }
+        if (classroomActivities != null) for (var activity : classroomActivities.findByStudentIdOrderByAssessedAtDesc(studentId)) {
+            if (activity.getDomain() != null && !activity.getDomain().isBlank() && Double.isFinite(activity.getScore()) && Double.isFinite(activity.getMaxScore()) && activity.getMaxScore() > 0) {
+                evidence.add(new Evidence("classroom_activity:" + activity.getId(), activity.getDomain(),
+                        activity.getScore() * 100 / activity.getMaxScore(), activity.getAssessedAt()));
+            }
+        }
         evidence.sort(Comparator.comparing(Evidence::at, Comparator.nullsLast(Comparator.reverseOrder()))
                 .thenComparing(Evidence::id));
         Map<String, Evidence> latest = new LinkedHashMap<>();
@@ -98,6 +113,12 @@ public class LivePathwayService {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Referenced material not found"));
         }
         LivePathwayResponse prediction = ai.selectPathway(profile);
+        // Enforce the score-based business policy at the persistence boundary too.
+        // The model's raw class and probabilities remain intact, but a faulty or stale
+        // AI response cannot create a remedial pathway for a score-based Successful outcome.
+        if("Successful".equals(context.get("application_outcome"))&&!prediction.activities().isEmpty())
+            prediction=new LivePathwayResponse(prediction.outcome(),prediction.probabilities(),prediction.modelVersion(),
+                "Verified overall performance is at least 80%; no remedial pathway was generated.",List.of(),"NONE",List.of());
         Set<String> evidenceIds = new HashSet<>();
         needs.forEach(need -> evidenceIds.add((String) need.get("assessment_id")));
         Set<String> lessonIds = new HashSet<>();
@@ -119,13 +140,15 @@ public class LivePathwayService {
             var recommendation = new LearningRecommendation(studentId, activity.subject(), activity.topic(),
                     activity.activity() + " Objective: " + activity.objective(), activity.reason(),
                     prediction.probabilities().get(prediction.outcome()));
+            recommendation.setStudentGrade(student.getGrade());
             recommendation.liveDetails(activity.lessonId(), prediction.modelVersion(), prediction.outcome(), prediction.pathwayType(),
                     prediction.probabilities(), activity.evidenceId(), key, request.materialReferences().get(activity.lessonId()));
             recommendation.curriculumDetails(activity.objective(),activity.difficulty(),activity.prerequisites());
             if(milestone!=null) recommendation.milestoneDetails(ownerId,milestone,snapshot.generatedAt(),evidenceIdsForSnapshot);
             planned.add(recommendation);
         }
-        if(persistPlan!=null)persistPlan.accept(new Result(planned.isEmpty()?"No suitable validated activity":"Recommendation available",prediction.outcome(),planned,prediction.probabilities(),prediction.modelVersion()));
+        String resultStatus=planned.isEmpty()?prediction.status():"Recommendation available";
+        if(persistPlan!=null)persistPlan.accept(new Result(resultStatus,prediction.outcome(),planned,prediction.probabilities(),prediction.modelVersion()));
         List<LearningRecommendation> saved=new ArrayList<>();
         for(var recommendation:planned) {
             var existing=recommendations.findByStudentIdAndRequestKeyAndLessonId(studentId,key,recommendation.getLessonId());
@@ -133,7 +156,7 @@ public class LivePathwayService {
             try { saved.add(milestone==null?recommendations.save(recommendation):recommendations.insert(recommendation)); }
             catch(org.springframework.dao.DuplicateKeyException concurrent) {saved.add(recommendations.findByStudentIdAndRequestKeyAndLessonId(studentId,key,recommendation.getLessonId()).orElseThrow(()->concurrent));}
         }
-        return new Result(saved.isEmpty() ? "No suitable validated activity" : "Recommendation available", prediction.outcome(), saved, prediction.probabilities(),prediction.modelVersion());
+        return new Result(saved.isEmpty() ? prediction.status() : "Recommendation available", prediction.outcome(), saved, prediction.probabilities(),prediction.modelVersion());
     }
 
     private static String firstText(String preferred,String fallback) {

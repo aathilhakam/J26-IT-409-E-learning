@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -17,8 +18,10 @@ import lk.smartplay.adaptive.dto.CreateStudentRequest;
 import lk.smartplay.adaptive.dto.DomainProgress;
 import lk.smartplay.adaptive.dto.StudentProfileResponse;
 import lk.smartplay.adaptive.model.LearningRecord;
+import lk.smartplay.adaptive.model.ClassroomActivity;
 import lk.smartplay.adaptive.model.Student;
 import lk.smartplay.adaptive.repository.LearningRecordRepository;
+import lk.smartplay.adaptive.repository.ClassroomActivityRepository;
 import lk.smartplay.adaptive.repository.StudentRepository;
 
 @Service
@@ -26,12 +29,22 @@ public class StudentService {
 
     private final StudentRepository studentRepository;
     private final LearningRecordRepository recordRepository;
+    private final ClassroomActivityRepository classroomActivityRepository;
 
     public StudentService(
             StudentRepository studentRepository,
             LearningRecordRepository recordRepository) {
         this.studentRepository = studentRepository;
         this.recordRepository = recordRepository;
+        this.classroomActivityRepository = null;
+    }
+
+    @Autowired
+    public StudentService(StudentRepository studentRepository, LearningRecordRepository recordRepository,
+            ClassroomActivityRepository classroomActivityRepository) {
+        this.studentRepository = studentRepository;
+        this.recordRepository = recordRepository;
+        this.classroomActivityRepository = classroomActivityRepository;
     }
 
     // Return active students belonging to the current teacher.
@@ -120,11 +133,19 @@ public class StudentService {
     // Return learning records after checking student ownership.
     public List<LearningRecord> findRecords(String studentId, String ownerId) {
         findById(studentId, ownerId);
-        return recordRepository.findByStudentIdOrderByAssessedAtDesc(studentId);
+        return allActivityRecords(studentId);
     }
 
     // Add a learning record after validating its score.
     public LearningRecord addRecord(
+            String studentId,
+            CreateLearningRecordRequest request,
+            String ownerId) {
+        return recordRepository.save(prepareRecord(studentId, request, ownerId));
+    }
+
+    /** Validate ownership and activity data, then return an unsaved learning record. */
+    public LearningRecord prepareRecord(
             String studentId,
             CreateLearningRecordRequest request,
             String ownerId) {
@@ -165,7 +186,7 @@ public class StudentService {
         }
         LearningRecord record = new LearningRecord(studentId, domain, request.score(), request.maxScore(), notes);
         record.activityDetails(request.attempts(), request.timeTakenMinutes(), status);
-        return recordRepository.save(record);
+        return record;
     }
 
     // Delete one record belonging to the specified student's records.
@@ -173,8 +194,7 @@ public class StudentService {
     public void deleteRecord(String studentId, String recordId, String ownerId) {
         findById(studentId, ownerId);
 
-        LearningRecord record = recordRepository
-                .findByStudentIdOrderByAssessedAtDesc(studentId)
+        LearningRecord record = allActivityRecords(studentId)
                 .stream()
                 .filter(item -> Objects.equals(item.getId(), recordId))
                 .findFirst()
@@ -182,14 +202,14 @@ public class StudentService {
                         HttpStatus.NOT_FOUND,
                         "Learning record not found for this student"));
 
-        recordRepository.delete(record);
+        if (record instanceof ClassroomActivity activity && classroomActivityRepository != null) classroomActivityRepository.delete(activity);
+        else recordRepository.delete(record);
     }
 
     // Build the learning profile for a student.
     public StudentProfileResponse profile(String studentId, String ownerId) {
         Student student = findById(studentId, ownerId);
-        List<LearningRecord> records = recordRepository
-                .findByStudentIdOrderByAssessedAtDesc(studentId);
+        List<LearningRecord> records = allActivityRecords(studentId);
 
         Map<String, List<LearningRecord>> byDomain = new LinkedHashMap<>();
         for (LearningRecord record : records) {
@@ -244,5 +264,13 @@ public class StudentService {
 
     private static double round(double value) {
         return Math.round(value * 10.0) / 10.0;
+    }
+
+    private List<LearningRecord> allActivityRecords(String studentId) {
+        List<LearningRecord> combined = new ArrayList<>(recordRepository.findByStudentIdOrderByAssessedAtDesc(studentId));
+        if (classroomActivityRepository != null) combined.addAll(classroomActivityRepository.findByStudentIdOrderByAssessedAtDesc(studentId));
+        combined.sort(Comparator.comparing(LearningRecord::getAssessedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(LearningRecord::getId, Comparator.nullsLast(String::compareTo)));
+        return List.copyOf(combined);
     }
 }

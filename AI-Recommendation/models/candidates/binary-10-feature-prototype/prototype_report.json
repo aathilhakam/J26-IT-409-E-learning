@@ -1,0 +1,118 @@
+{
+  "purpose": "Exploratory prototype only; not a validated or deployable model.",
+  "trainedAt": "2026-10-22T15:42:27.196654+00:00",
+  "sourceFeatureFile": "data/processed/student_features.csv",
+  "sourceTargetFile": "data/processed/historical_clean.csv",
+  "targetRule": "Notebook 04: per-student most frequent historical Outcome via value_counts().idxmax(); ties resolve by first observed outcome in row order.",
+  "features": [
+    "Average_Attempts",
+    "Total_Activities",
+    "Completion_Rate",
+    "Participation",
+    "Attention_Level",
+    "Collaboration",
+    "Learning_Difficulty",
+    "Historical_Lessons",
+    "Completed_Historical_Lessons",
+    "Historical_Completion_Rate"
+  ],
+  "classes": [
+    "Needs Practice",
+    "Successful"
+  ],
+  "allDominantTargetCounts": {
+    "Successful": 9,
+    "Needs Practice": 5,
+    "Waiting": 1
+  },
+  "binaryTrainingClassCounts": {
+    "Successful": 9,
+    "Needs Practice": 5
+  },
+  "excludedNonBinaryStudents": [
+    {
+      "Student_ID": "ST004",
+      "Target_Outcome": "Waiting"
+    }
+  ],
+  "eligibleStudentCount": 14,
+  "studentsWithTiedHistoricalOutcomeCounts": [
+    "ST001",
+    "ST007",
+    "ST009",
+    "ST012",
+    "ST013",
+    "ST015"
+  ],
+  "tieStudentCount": 6,
+  "validation": {
+    "method": "Leave-one-student-out cross-validation; one aggregate row per student.",
+    "accuracy": 0.7857142857142857,
+    "precision_macro": 0.775,
+    "recall_macro": 0.7444444444444445,
+    "f1_macro": 0.7543859649122806,
+    "confusionMatrixLabels": [
+      "Needs Practice",
+      "Successful"
+    ],
+    "confusionMatrix": [
+      [
+        3,
+        2
+      ],
+      [
+        1,
+        8
+      ]
+    ],
+    "classificationReport": {
+      "Needs Practice": {
+        "precision": 0.75,
+        "recall": 0.6,
+        "f1-score": 0.6666666666666666,
+        "support": 5.0
+      },
+      "Successful": {
+        "precision": 0.8,
+        "recall": 0.8888888888888888,
+        "f1-score": 0.8421052631578947,
+        "support": 9.0
+      },
+      "accuracy": 0.7857142857142857,
+      "macro avg": {
+        "precision": 0.775,
+        "recall": 0.7444444444444445,
+        "f1-score": 0.7543859649122806,
+        "support": 14.0
+      },
+      "weighted avg": {
+        "precision": 0.7821428571428571,
+        "recall": 0.7857142857142857,
+        "f1-score": 0.7794486215538846,
+        "support": 14.0
+      }
+    }
+  },
+  "limitations": [
+    "Only 14 student rows are eligible; this is insufficient for reliable generalization or the project training gate.",
+    "Labels are derived from mixed historical lesson outcomes, not independent teacher-verified student outcomes.",
+    "Six students have tied most-frequent outcomes; the source notebook resolves ties from row ordering.",
+    "Selected lesson-history features may overlap with the historical outcome target, creating target leakage.",
+    "This ten-feature model only predicts a general student-level class; it has no subject-specific output.",
+    "This candidate is saved separately and is not wired into live inference."
+  ],
+  "liveModelModified": false,
+  "probabilityValidation": {
+    "classes": [
+      "Needs Practice",
+      "Successful"
+    ],
+    "probabilityColumns": [
+      "Needs Practice",
+      "Successful"
+    ],
+    "allCrossValidationRowsSumToOne": true,
+    "allFittedCandidateRowsSumToOne": true
+  },
+  "candidateArtifact": "models/candidates/binary-10-feature-prototype/random_forest.joblib"
+}

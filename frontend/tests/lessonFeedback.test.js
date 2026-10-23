@@ -15,6 +15,14 @@ test("lesson routes support direct links and browser history without accepting a
   for(const path of ["/dashboard/lessons/", "/dashboard/lessons/a/feedback", "/dashboard/content", "/dashboard/lessons/%E0%A4", "/dashboard/lessons/%"]) assert.equal(isLessonPath(path),false);
   assert.match(renderToStaticMarkup(React.createElement(LessonWorkspacePage,{materialId:"m1"})),/Loading lesson and saved classroom feedback/);
 });
+test("lesson feedback export reports saved count and surfaces API failures", async () => {
+  const originalFetch=globalThis.fetch;
+  try {
+    globalThis.fetch=async()=>({ok:true,headers:{get:key=>key==="X-Feedback-Count"?"2":key==="Content-Disposition"?'attachment; filename="Song_Book_Teacher_Feedback.xlsx"':null},blob:async()=>new Blob(["workbook"])});
+    const downloaded=await api.downloadLessonTeacherFeedback("lesson/id");assert.equal(downloaded.feedbackCount,2);assert.equal(downloaded.filename,"Song_Book_Teacher_Feedback.xlsx");assert.equal(downloaded.blob.size,8);
+    globalThis.fetch=async()=>({ok:false,status:403,json:async()=>({message:"Lesson not found"})});await assert.rejects(api.downloadLessonTeacherFeedback("lesson/id"),/Lesson not found/);
+  } finally { globalThis.fetch=originalFetch; }
+});
 test("shared feedback changes only selected active students and preserves blank-field overrides", () => {
   const rows=feedbackRows(workspace).map(row=>({...row, selected: row.studentId !== "s2", studentAnswer: "Individual response"}));
   const next=applySharedFeedback(rows,{...emptyFeedback(),...observed,question:"Which bird is this?",studentAnswer:""});

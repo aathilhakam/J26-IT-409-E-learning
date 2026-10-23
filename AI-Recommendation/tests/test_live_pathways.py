@@ -12,6 +12,9 @@ sys.path.insert(0, str(ROOT))
 import app as service
 from pathways import ProfileError, predict, select_pathway, validate_features
 
+# Tests exercise the API contract directly and should not depend on the
+# developer's local backend .env inference token.
+service.INFERENCE_TOKEN = ""
 client = TestClient(service.app)
 
 
@@ -33,6 +36,7 @@ def test_saved_pipeline_and_all_three_actual_classes():
     for student, expected in [("ST001", "Successful"), ("ST006", "Needs Practice"), ("ST004", "Waiting")]:
         result = predict(service.model, features(student))
         assert result["Predicted_Outcome"] == expected
+        assert result["Model_Outcome_Compatibility"] == {"Successful": "Successful", "Needs Practice": "Needs Practice", "Waiting": "INSUFFICIENT_DATA"}[expected]
         assert sum(result["Prediction_Probabilities"].values()) == pytest.approx(1)
         assert set(result["Prediction_Probabilities"]) == set(service.model.classes_)
         assert list(validate_features(service.model, features(student)).columns) == service.MODEL_FEATURES
@@ -60,6 +64,44 @@ def test_live_endpoint_uses_current_profile_not_dataset_lookup():
     assert payload["Model_Version"] == hashlib.sha256(service.MODEL_FILE.read_bytes()).hexdigest()
 
 
+def test_verified_score_outcome_overrides_raw_class_and_success_never_generates_remedial_path():
+    p = profile(); p["features"] = features("ST006")  # raw Needs Practice remains visible
+    p.update(application_outcome="Successful", verified_performance_percentage=80.0)
+    result = client.post("/api/pathways", json=p)
+    assert result.status_code == 200, result.text
+    payload = result.json()
+    assert payload["Predicted_Outcome"] == "Needs Practice"
+    assert payload["Application_Outcome"] == "Successful"
+    assert payload["Verified_Performance_Percentage"] == 80.0
+    assert payload["Learning_Path"] == []
+    assert payload["Path_Type"] == "NONE"
+
+
+def test_below_threshold_uses_only_weak_areas_even_when_raw_model_says_successful():
+    p = profile(); p["features"] = features("ST001")  # raw Successful remains unchanged
+    p["needs"] = [
+        dict(assessment_id="weak", domain="Number Recognition", score_percentage=40),
+        dict(assessment_id="strong", domain="Phonics", score_percentage=95),
+    ]
+    p.update(application_outcome="Needs Practice", verified_performance_percentage=79.99,
+             demonstrated_skills=["Number sequence knowledge"])
+    result = client.post("/api/pathways", json=p)
+    assert result.status_code == 200, result.text
+    payload = result.json()
+    assert payload["Predicted_Outcome"] == "Successful"
+    assert payload["Application_Outcome"] == "Needs Practice"
+    assert all(item["Evidence_ID"] == "weak" for item in payload["Learning_Path"])
+
+
+def test_score_based_needs_practice_with_no_area_below_80_does_not_invent_a_target():
+    p = profile(); p["needs"] = [dict(assessment_id="strong", domain="Number Recognition", score_percentage=80)]
+    p.update(application_outcome="Needs Practice", verified_performance_percentage=79.0)
+    payload = client.post("/api/pathways", json=p).json()
+    assert payload["Learning_Path"] == []
+    assert payload["Unmatched_Needs"] == []
+    assert "No individual learning area is below 80%" in payload["Status"]
+
+
 def test_missing_evidence_missing_features_and_extra_fields_are_422():
     for mutation in [lambda p: p.update(needs=[]), lambda p: p.update(features={}), lambda p: p.update(ownerId="forged"), lambda p: p.update(limit=0)]:
         p = profile(); mutation(p)
@@ -77,9 +119,45 @@ def test_real_catalog_requires_confirmed_prerequisite_and_handles_no_match():
     p = profile(); p["demonstrated_skills"] = []
     result = client.post("/api/pathways", json=p).json()
     assert result["Learning_Path"] == []
-    assert result["Status"] == "No suitable validated activity"
+    assert result["Status"].startswith("No pathway saved.")
+    assert result["Unmatched_Needs"][0]["Reason"] == "PREREQUISITE_NOT_CONFIRMED"
     p = profile(); p["grade"] = "Grade 9"
-    assert client.post("/api/pathways", json=p).json()["Learning_Path"] == []
+    wrong_grade = client.post("/api/pathways", json=p).json()
+    assert wrong_grade["Learning_Path"] == []
+    assert wrong_grade["Unmatched_Needs"][0]["Reason"] == "GRADE_MISMATCH"
+
+
+@pytest.mark.parametrize("area,reason,required_text", [
+    ("Identifying the Fruits names", "MISSING_CURRICULUM_MAPPING", "Plants lesson"),
+    ("Identifying the Birds names", "MISSING_CURRICULUM_MAPPING", "no bird-identification"),
+    ("Songs", "MISSING_CURRICULUM_MAPPING", "no music"),
+])
+def test_unmapped_worksheet_areas_explain_exact_curriculum_gap(area, reason, required_text):
+    p = profile(); p["needs"] = [dict(assessment_id="worksheet:actual-1", domain=area, score_percentage=40)]
+    response = client.post("/api/pathways", json=p)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["Learning_Path"] == []
+    assert result["Unmatched_Needs"][0]["Reason"] == reason
+    assert required_text.lower() in result["Unmatched_Needs"][0]["Explanation"].lower()
+    assert "worksheet:actual-1" == result["Unmatched_Needs"][0]["Evidence_ID"]
+    assert required_text.lower() in result["Status"].lower()
+
+
+def test_unsupported_or_unvalidated_lesson_ids_never_enter_pathway():
+    p = profile(); p["needs"] = [dict(assessment_id="a", domain="Number Recognition", score_percentage=40)]
+    unsupported = pd.DataFrame([dict(Lesson_ID="NOT-APPROVED", Grade="Grade 1", Subject="Mathematics", Topic="Number Recognition", Competency="Number Sense", Learning_Objective="Identify numbers 11-50 correctly", Difficulty_Level="Basic", Required_Skills="Number sequence knowledge", Classroom_Activities="Number chart activities")])
+    result = select_pathway(unsupported, service.validated_learning_paths, p, {"Predicted_Outcome": "Needs Practice"})
+    assert result["Learning_Path"] == []
+    assert result["Unmatched_Needs"][0]["Reason"] == "ACTIVITY_NOT_VALIDATED"
+
+
+def test_recommendation_explanation_uses_measured_need_and_verified_curriculum_content():
+    p = profile(); p.update(demonstrated_skills=["Number sequence knowledge"], needs=[dict(assessment_id="worksheet:score-1", domain="Number Recognition", score_percentage=35)])
+    result = select_pathway(pd.read_csv(ROOT / "data/processed/curriculum_clean.csv"), service.validated_learning_paths, p, {"Predicted_Outcome": "Needs Practice"})
+    assert result["Learning_Path"][0]["Recommended_Lesson_ID"] == "LES021"
+    assert result["Learning_Path"][0]["Evidence_ID"] == "worksheet:score-1"
+    assert "Number Recognition evidence is 35%" in result["Learning_Path"][0]["Selection_Reason"]
 
 
 def catalog():

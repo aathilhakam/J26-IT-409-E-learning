@@ -26,13 +26,14 @@ class WorksheetScoreServiceWorkflowTest {
     private final AssessmentResultService assessments=mock(AssessmentResultService.class);
     private final StudentService studentService=mock(StudentService.class);
     private final MongoTemplate mongo=mock(MongoTemplate.class);
+    private final LearningRecommendationRepository recommendations=mock(LearningRecommendationRepository.class);
     private WorksheetScoreService service;
     private Student ashen,ayesha,blank;
     private final String owner="teacher-1",materialId="material-1";
     private final WorksheetScoreService.Context context=new WorksheetScoreService.Context(materialId,"Fruits Worksheet","English","Grade 1",LocalDate.parse("2026-10-20"));
 
     @BeforeEach void setup(){
-        service=new WorksheetScoreService(students,materials,results,assessments,studentService,mongo);
+        service=new WorksheetScoreService(students,materials,results,assessments,studentService,mongo,recommendations);
         ashen=student("student-ashen","Ashen Wijesinghe");ayesha=student("student-ayesha","Ayesha Niyas");blank=student("student-blank","Blank Student");
         when(students.findByOwnerId(owner)).thenReturn(List.of(ashen,ayesha,blank));
         when(results.findById(anyString())).thenReturn(Optional.empty());
@@ -51,27 +52,35 @@ class WorksheetScoreServiceWorkflowTest {
     }
 
     private void addRow(org.apache.poi.ss.usermodel.Row row,Student student,double score,String feedback){
-        String[] cells={student.getId(),student.getName(),student.getGrade(),materialId,context.title(),context.subject(),"",feedback};
-        for(int column=0;column<cells.length;column++)if(column!=6)row.createCell(column).setCellValue(cells[column]);
-        if(!Double.isNaN(score))row.createCell(6).setCellValue(score);
+        String[] cells={student.getId(),student.getName(),student.getGrade(),materialId,context.title(),"","2","COMPLETED"};
+        for(int column=0;column<cells.length;column++)if(column!=5)row.createCell(column).setCellValue(cells[column]);
+        if(!Double.isNaN(score))row.createCell(5).setCellValue(score);
     }
 
     @Test void importUsesUploadedRowsAndSavesTheMatchingValidatedValues()throws Exception{
         var file=workbook(8.0,7.5);var preview=service.preview(owner,context,file);verifyNoInteractions(assessments);
-        assertEquals(2,preview.valid());assertEquals(0,preview.invalid());assertEquals(1,preview.blank());
-        var imported=service.importScores(owner,context,file,preview.token());
+        assertEquals(2,preview.valid(),preview.rows().toString());assertEquals(0,preview.invalid());assertEquals(1,preview.blank());
+        var imported=service.importScores(owner,context,file,preview.token(),true);
         assertEquals(2,imported.valid());assertEquals(0,imported.invalid());assertEquals(1,imported.blank());
-        var first=imported.rows().get(0);assertEquals("student-ashen",first.studentId());assertEquals("Ashen Wijesinghe",first.studentName());assertEquals("Grade 1",first.grade());assertEquals(materialId,first.worksheetId());assertEquals("Fruits Worksheet",first.title());assertEquals("English",first.subject());assertEquals(8.0,first.score());assertEquals(" Good work ",first.feedback());assertEquals("IMPORTED",first.status());
+        var first=imported.rows().get(0);assertEquals("student-ashen",first.studentId());assertEquals("Ashen Wijesinghe",first.studentName());assertEquals("Grade 1",first.grade());assertEquals(materialId,first.worksheetId());assertEquals("Fruits Worksheet",first.title());assertEquals("English",first.subject());assertEquals(8.0,first.score());assertEquals(10.0,first.maxScore());assertEquals("",first.feedback());assertEquals(2,first.attempts());assertNull(first.timeTakenMinutes());assertEquals("COMPLETED",first.completionStatus());assertEquals("IMPORTED",first.status());
         var second=imported.rows().get(1);assertEquals("student-ayesha",second.studentId());assertEquals(7.5,second.score());
         var blank=imported.rows().get(2);assertNull(blank.score());assertEquals("",blank.scoreValue());assertEquals("BLANK",blank.status());
-        verify(assessments).createWorksheet(eq("student-ashen"),eq(owner),anyString(),eq(materialId),eq("Fruits Worksheet"),eq("English"),eq(context.date()),eq(8.0),eq(" Good work "));
-        verify(assessments).createWorksheet(eq("student-ayesha"),eq(owner),anyString(),eq(materialId),eq("Fruits Worksheet"),eq("English"),eq(context.date()),eq(7.5),eq("Excellent"));
+        verify(assessments).createWorksheet(eq("student-ashen"),eq(owner),anyString(),eq(materialId),eq("Fruits Worksheet"),eq("English"),eq(context.date()),eq(8.0),eq(""),eq(2),isNull(),eq("COMPLETED"));
+        verify(assessments).createWorksheet(eq("student-ayesha"),eq(owner),anyString(),eq(materialId),eq("Fruits Worksheet"),eq("English"),eq(context.date()),eq(7.5),eq(""),eq(2),isNull(),eq("COMPLETED"));
     }
 
     @Test void importReadsTheCurrentlyUploadedFileRatherThanAnyEarlierFile()throws Exception{
-        var secondFile=workbook(4.5,6.25);var preview=service.preview(owner,context,secondFile);var result=service.importScores(owner,context,secondFile,preview.token());
+        var secondFile=workbook(4.5,6.25);var preview=service.preview(owner,context,secondFile);var result=service.importScores(owner,context,secondFile,preview.token(),true);
         assertEquals(4.5,result.rows().get(0).score());assertEquals(6.25,result.rows().get(1).score());
-        verify(assessments).createWorksheet(eq("student-ashen"),eq(owner),anyString(),eq(materialId),eq("Fruits Worksheet"),eq("English"),eq(context.date()),eq(4.5),eq(" Good work "));
+        verify(assessments).createWorksheet(eq("student-ashen"),eq(owner),anyString(),eq(materialId),eq("Fruits Worksheet"),eq("English"),eq(context.date()),eq(4.5),eq(""),eq(2),isNull(),eq("COMPLETED"));
+    }
+
+    @Test void completedDefaultCannotBeImportedWithoutExplicitTeacherVerification()throws Exception{
+        var file=workbook(8.0,7.5);var preview=service.preview(owner,context,file);
+        var imported=service.importScores(owner,context,file,preview.token(),false);
+        assertEquals(0,imported.valid());assertEquals(2,imported.invalid());
+        assertTrue(imported.rows().get(0).message().contains("verified completed worksheet statuses"));
+        verifyNoInteractions(assessments);
     }
 
     @Test void malformedHeadersAndUnauthorizedStudentIdsAreRejectedWithoutSaving()throws Exception{

@@ -15,6 +15,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
@@ -87,10 +88,13 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public AccountResponse currentAccount(Authentication authentication) {
+    public ResponseEntity<AccountResponse> currentAccount(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken) {
+            return ResponseEntity.noContent().build();
+        }
         TeacherAccount account = accountRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please log in to continue"));
-        return AccountResponse.from(account);
+        return ResponseEntity.ok(AccountResponse.from(account));
     }
 
     @PostMapping("/logout")

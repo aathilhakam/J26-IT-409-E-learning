@@ -1,13 +1,10 @@
-import MilestoneProgress from "../features/recommendations/components/MilestoneProgress";
 import ClassroomLessons from "../features/dashboard/components/ClassroomLessons";
-import LivePredictionState from "../features/recommendations/components/LivePredictionState";
 import React from "react";
-import { Button, Card } from "../components";
-import { displayDate } from "../utils/format";
+import { Button } from "../components";
 import SummaryCard from "../features/dashboard/components/SummaryCard";
-import RecommendationCard from "../features/recommendations/components/RecommendationCard";
+import PrototypePracticeAlerts from "../features/recommendations/components/PrototypePracticeAlerts";
 
-export default function DashboardPage({ classroom, livePrediction, contentItems = [], handleAssignRecommendation, onAssignMaterial, sessionUser, activeId, students, activeStudent, records, profile, average, areas, recommendations, saving, busy, error, editingId, setActiveId, setShowMaterialForm, setShowStudentForm, handleGenerate, setError, setEditingId, handleReview, navigate }) {
+export default function DashboardPage({ classroom, contentItems = [], onAssignMaterial, onCreatePracticeModule, sessionUser, activeId, students, activeStudent, recommendations, saving, busy, error, setActiveId, setShowMaterialForm, handleGenerate, setError, navigate }) {
   const metric = (key, suffix = "") => {
     if (classroom?.loading) return "…";
     if (classroom?.error || classroom?.statisticsError) return "—";
@@ -16,15 +13,9 @@ export default function DashboardPage({ classroom, livePrediction, contentItems 
     return `${key === "learningProgress" ? Number(value.toFixed(2)) : value}${suffix}`;
   };
   const pendingCount = recommendations.filter((item) => item.status === "PENDING").length;
-  const pathwayRows = classroom?.pathways || [];
-  const personalizedRows = pathwayRows.filter(row => row.recommendation.pathwayType === "PERSONALIZED"
-    || (!row.recommendation.pathwayType && row.recommendation.source === "RANDOM_FOREST" && row.recommendation.predictedOutcome === "Needs Practice"));
-  const commonRows = pathwayRows.filter(row => !personalizedRows.includes(row));
   const greeting = new Intl.DateTimeFormat("en", { weekday: "long", month: "long", day: "numeric" }).format(new Date());
   const greetingHour = new Date().getHours();
   const greetingText = greetingHour < 12 ? "Good morning" : greetingHour < 17 ? "Good afternoon" : "Good evening";
-  const growthArea = [...areas].sort((first, second) => first.averagePercentage - second.averagePercentage)[0];
-  const strongestArea = [...areas].sort((first, second) => second.averagePercentage - first.averagePercentage)[0];
   return (
     <>
       <section className="teacher-dashboard-heading" id="overview">
@@ -67,83 +58,10 @@ export default function DashboardPage({ classroom, livePrediction, contentItems 
         <div className="dashboard-main-column">
           <ClassroomLessons onOpenLesson={(id) => navigate(`/dashboard/lessons/${encodeURIComponent(id)}`)} state={classroom} availableMaterials={contentItems.filter(item => !item.assignmentMode || item.assignmentMode === "LIBRARY")} onAssignMaterial={onAssignMaterial} />
 
-          <MilestoneProgress key={activeStudent?.id || "teacher"} studentId={activeStudent?.id} materials={contentItems} onChanged={classroom?.refresh} />
-          <section className="dashboard-pathways" id="pathways">
-            <div className="dashboard-section-head pathways-head">
-              <div>
-                <span className="dashboard-section-kicker purple">✧ TEACHER-REVIEWED</span>
-                <h2>Learning pathways for every student</h2>
-                <p>Random Forest pathways are generated after each student completes three lessons. Students predicted as “Needs Practice” receive personalized practice; other students follow the common pathway.</p>
-              </div>
-              <Button variant="secondary" onClick={handleGenerate} disabled={saving || !activeStudent}>
-                {saving ? "Preparing…" : "＋ Create pathway"}
-              </Button>
-            </div>
-            <LivePredictionState state={livePrediction} />
-            {[
-              ["Personalized practice pathways · Needs Practice", personalizedRows],
-              ["Common learning pathways · Other predictions", commonRows],
-            ].map(([title, rows]) => <section className="teacher-pathway-group" key={title}>
-              <h3>{title}</h3>
-              {rows.length ? <div className="recommendation-list">{rows.map(({ studentId, studentName, studentGrade, recommendation }) => <article className="teacher-pathway-row" key={recommendation.id}>
-                <p className="dashboard-activity-chip">{studentName} · {studentGrade}</p>
-                <RecommendationCard
-                  recommendation={recommendation}
-                  materials={contentItems}
-                  onAssign={(materialId) => handleAssignRecommendation(recommendation, materialId)}
-                  saving={saving}
-                  editing={editingId === recommendation.id}
-                  onEdit={() => setEditingId(recommendation.id)}
-                  onCancelEdit={() => setEditingId("")}
-                  onReview={(status, data) => void handleReview(recommendation, status, data)}
-                />
-              </article>)}</div> : <p className="teacher-note">No saved pathways in this group yet.</p>}
-            </section>)}
-          </section>
         </div>
 
         <aside className="dashboard-side-column">
-          <Card as="section" className="dashboard-progress-panel" id="snapshot">
-            <div className="dashboard-section-head">
-              <div>
-                <span className="dashboard-section-kicker">LEARNER PROFILE</span>
-                <h2>{activeStudent ? activeStudent.name : "Learning progress"}</h2>
-                <p>{activeStudent ? `${activeStudent.grade} · ${profile?.assessmentCount ?? 0} records` : "Select a learner to view progress."}</p>
-              </div>
-              {activeStudent && <span className="dashboard-profile-percent">{average.toFixed(0)}%</span>}
-            </div>
-            {activeStudent ? (
-              <>
-                <div className="dashboard-progress-list">
-                  {areas.length > 0 ? areas.slice(0, 5).map((area) => (
-                    <div className="dashboard-progress-row" key={area.domain}>
-                      <div><strong>{area.domain}</strong><span>{area.averagePercentage.toFixed(0)}%</span></div>
-                      <div className="dashboard-progress-track"><span style={{ width: `${Math.min(100, area.averagePercentage)}%` }} /></div>
-                    </div>
-                  )) : <p className="dashboard-no-progress">Learning-area progress will appear here after you add records.</p>}
-                </div>
-                {strongestArea && <div className="dashboard-highlight"><span className="green-dot" /> Strongest area <strong>{strongestArea.domain} · {strongestArea.averagePercentage.toFixed(0)}%</strong></div>}
-                {growthArea && (
-                  <div className="dashboard-insight">
-                    <span aria-hidden="true">✧</span>
-                    <div><strong>Area to nurture</strong><p>{growthArea.domain} is a good place to focus the next learning activity.</p></div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="dashboard-no-progress">Add a learner to view their learning areas and progress.</div>
-            )}
-          </Card>
-
-          <Card as="section" className="dashboard-prompt-panel">
-            <span className="dashboard-prompt-icon">✧</span>
-            <div>
-              <span className="dashboard-section-kicker purple">NEXT CLASSROOM STEP</span>
-              <h2>{growthArea ? `Explore ${growthArea.domain}` : "Build a learning journey"}</h2>
-              <p>{growthArea ? `Create a teacher-reviewed activity to support ${activeStudent?.name ?? "your learner"} in this area.` : "Add a learning record to get personalized pathway ideas for your learner."}</p>
-              <Button onClick={handleGenerate} disabled={saving || !activeStudent}>{saving ? "Preparing…" : "Create pathway"} <span aria-hidden="true">→</span></Button>
-            </div>
-          </Card>
+          <PrototypePracticeAlerts students={students} onCreatePracticeModule={onCreatePracticeModule} />
         </aside>
       </section>
 

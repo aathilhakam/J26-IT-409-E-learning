@@ -1,10 +1,10 @@
 {
   "source": "Unchanged cleaned ST001 source rows; explicit simulated teacher prerequisite confirmation for development integration test.",
   "expectedFeatures": {
-    "Average_Score": 78.0,
-    "Average_Attempts": 1.75,
-    "Average_Time_Taken": 11.25,
-    "Total_Activities": 4,
+    "Average_Score": 74.57142857142857,
+    "Average_Attempts": 1.4285714285714286,
+    "Average_Time_Taken": 10.714285714285714,
+    "Total_Activities": 7,
     "Completion_Rate": 100.0,
     "Pre_Test": 50.0,
     "Post_Test": 77.5,

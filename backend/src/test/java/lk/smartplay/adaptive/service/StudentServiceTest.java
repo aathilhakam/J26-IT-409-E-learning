@@ -41,6 +41,8 @@ class StudentServiceTest {
         Student student = new Student("Amaya Silva", "Grade 1", OWNER_ID);
         LearningRecord recent = new LearningRecord("student-1", "Creativity", 4, 5, "");
         LearningRecord earlier = new LearningRecord("student-1", "Creativity", 2, 5, "");
+        org.springframework.test.util.ReflectionTestUtils.setField(recent, "assessedAt", java.time.Instant.parse("2026-10-21T00:00:00Z"));
+        org.springframework.test.util.ReflectionTestUtils.setField(earlier, "assessedAt", java.time.Instant.parse("2026-10-20T00:00:00Z"));
         when(studentRepository.findByIdAndOwnerId("student-1", OWNER_ID)).thenReturn(Optional.of(student));
         when(recordRepository.findByStudentIdOrderByAssessedAtDesc("student-1"))
                 .thenReturn(List.of(recent, earlier));

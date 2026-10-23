@@ -17,6 +17,7 @@ public class LearningRecommendation {
     @Id
     private String id;
     private String studentId;
+    private String studentGrade;
     private String domain;
     private String activityTitle;
     private String description;
@@ -107,6 +108,9 @@ public class LearningRecommendation {
     public String getStudentId() {
         return studentId;
     }
+
+    public String getStudentGrade() { return studentGrade; }
+    public void setStudentGrade(String studentGrade) { this.studentGrade = studentGrade; }
 
     public String getDomain() {
         return domain;

@@ -18,6 +18,7 @@ DATA_DIR = BASE_DIR / "data" / "processed"
 MODEL_DIR = BASE_DIR / "models"
 
 MODEL_FILE = MODEL_DIR / "random_forest.joblib"
+PROTOTYPE_MODEL_FILE = MODEL_DIR / "candidates" / "binary-10-feature-prototype" / "random_forest.joblib"
 STUDENT_FILE = DATA_DIR / "student_features.csv"
 LEARNING_PATH_FILE = (
     DATA_DIR / "validated_personalized_learning_paths.csv"
@@ -36,6 +37,20 @@ if not hasattr(model, "feature_names_in_"):
     )
 
 MODEL_FEATURES = list(model.feature_names_in_)
+
+PROTOTYPE_FEATURES = [
+    "Average_Attempts", "Total_Activities", "Completion_Rate",
+    "Participation", "Attention_Level", "Collaboration", "Learning_Difficulty",
+    "Historical_Lessons", "Completed_Historical_Lessons", "Historical_Completion_Rate",
+]
+PROTOTYPE_CLASSES = ["Needs Practice", "Successful"]
+prototype_model = None
+if PROTOTYPE_MODEL_FILE.is_file():
+    prototype_model = joblib.load(PROTOTYPE_MODEL_FILE)
+    if list(getattr(prototype_model, "feature_names_in_", [])) != PROTOTYPE_FEATURES:
+        raise RuntimeError("Binary prototype artifact does not match the approved ten-feature prototype schema.")
+    if list(getattr(prototype_model, "classes_", [])) != PROTOTYPE_CLASSES:
+        raise RuntimeError("Binary prototype artifact does not contain exactly the two expected classes.")
 
 # -------------------------------------------------
 # 3. Load student datasets
@@ -80,7 +95,8 @@ def health_check():
     return {
         "status": "ok",
         "model": "Random Forest",
-        "features": len(MODEL_FEATURES)
+        "features": len(MODEL_FEATURES),
+        "binary_prototype_available": prototype_model is not None,
     }
 
 # -------------------------------------------------
@@ -236,9 +252,29 @@ class LiveProfile(BaseModel):
     recorded_difficulty: str | None = Field(default=None, max_length=180)
     measured_improvement: float | None = Field(default=None, ge=-100, le=100, allow_inf_nan=False)
     pathway_mode: Literal["THREE_LESSON_MILESTONE"] | None = None
+    # Calculated by the authenticated Spring service from persisted valid score records.
+    verified_performance_percentage: float | None = Field(default=None, ge=0, le=100, allow_inf_nan=False)
+    application_outcome: Literal["Successful", "Needs Practice"] | None = None
 
 
-INFERENCE_TOKEN = os.environ.get("SMARTPLAY_INFERENCE_TOKEN", "")
+def load_inference_token():
+    token = os.environ.get("SMARTPLAY_INFERENCE_TOKEN", "").strip()
+    if token:
+        return token
+    # Local development shares the backend's ignored .env file so the two
+    # services cannot accidentally start with different inference tokens.
+    backend_env = BASE_DIR.parent / "backend" / ".env"
+    try:
+        for line in backend_env.read_text(encoding="utf-8").splitlines():
+            key, separator, value = line.partition("=")
+            if separator and key.strip() == "SMARTPLAY_INFERENCE_TOKEN":
+                return value.strip().strip("\"'")
+    except OSError:
+        pass
+    return ""
+
+
+INFERENCE_TOKEN = load_inference_token()
 
 
 def require_inference_token(authorization: str | None = Header(default=None)):
@@ -258,6 +294,45 @@ def live_pathway(profile: LiveProfile):
         return result
     except ProfileError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+class BinaryPrototypeProfile(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    features: dict
+
+
+@app.post("/api/prototype/predict", dependencies=[Depends(require_inference_token)])
+def predict_binary_prototype(profile: BinaryPrototypeProfile):
+    """Predict with the isolated ten-feature candidate; never create pathways."""
+    if prototype_model is None:
+        raise HTTPException(status_code=503, detail="The exploratory binary prototype artifact is not installed.")
+    if set(profile.features) != set(PROTOTYPE_FEATURES):
+        missing = sorted(set(PROTOTYPE_FEATURES) - set(profile.features))
+        unexpected = sorted(set(profile.features) - set(PROTOTYPE_FEATURES))
+        raise HTTPException(status_code=422, detail=f"Prototype feature mismatch; missing: {missing}; unexpected: {unexpected}")
+    frame = pd.DataFrame([[profile.features[name] for name in PROTOTYPE_FEATURES]], columns=PROTOTYPE_FEATURES)
+    try:
+        prediction = str(prototype_model.predict(frame)[0])
+        probabilities = prototype_model.predict_proba(frame)[0]
+    except (TypeError, ValueError) as error:
+        raise HTTPException(status_code=422, detail=f"Prototype features are invalid: {error}") from error
+    if prediction not in PROTOTYPE_CLASSES or len(probabilities) != 2:
+        raise HTTPException(status_code=500, detail="Prototype returned an unsupported class response.")
+    values = {str(label): float(probability) for label, probability in zip(prototype_model.classes_, probabilities)}
+    if not all(0 <= value <= 1 for value in values.values()) or abs(sum(values.values()) - 1.0) > 1e-9:
+        raise HTTPException(status_code=500, detail="Prototype returned invalid class probabilities.")
+    import hashlib
+    from datetime import datetime, timezone
+    return {
+        "predictedClass": prediction,
+        "probabilities": values,
+        "modelVersion": hashlib.sha256(PROTOTYPE_MODEL_FILE.read_bytes()).hexdigest(),
+        "predictedAt": datetime.now(timezone.utc).isoformat(),
+        "featureCount": len(PROTOTYPE_FEATURES),
+        "features": profile.features,
+        "status": "EXPLORATORY_PROTOTYPE",
+        "warning": "Exploratory only: trained on 14 historical students with unverified, history-derived labels. Not validated for student decisions or subject-specific practice.",
+    }
 
 
 class SourceProfile(BaseModel):

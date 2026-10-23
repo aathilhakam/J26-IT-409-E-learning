@@ -80,8 +80,8 @@ public class LessonFeedbackService {
         for(var row:prepared) {
             try {
                 // Stable IDs make a retry repair a partial save, without duplicate observations/history.
-                // Do not invent the missing model feature or replace a valid AI observation with an incomplete one.
-                if(row.observation().getLearningDifficulty()!=null && !row.observation().getLearningDifficulty().isBlank()) mongo.save(row.observation());
+                // Submitted feedback includes all training categories; persist them for live feature aggregation.
+                mongo.save(row.observation());
                 if(row.history()!=null)mongo.save(row.history());
                 if(updateStatus)assignments.update(materialId,row.studentId(),owner,row.status());
                 results.add(new Outcome(row.studentId(),"SAVED","Observation, feedback and lesson history saved"));

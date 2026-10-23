@@ -4,7 +4,7 @@ import { api } from "../../../services/api";
 import RecommendationCard from "./RecommendationCard";
 import ThreeLessonPerformance from "./ThreeLessonPerformance";
 
-export const milestoneStatus = value => ({GENERATING:"Generating recommendation",READY:"Ready to evaluate",GENERATED:"Generated · teacher review required",INSUFFICIENT_DATA:"More learning evidence needed",ERROR:"Evaluation failed · retry available",NO_MATCH:"No suitable curriculum activity"}[value] || value);
+export const milestoneStatus = value => ({GENERATING:"Generating recommendation",READY:"Ready to evaluate",GENERATED:"Generated · teacher review required",SUCCESSFUL:"Successful · no remedial pathway needed",INSUFFICIENT_DATA:"More learning evidence needed",ERROR:"Evaluation failed · retry available",NO_MATCH:"No suitable curriculum activity"}[value] || value);
 export function MilestoneSummary({ progress }) {
   return <p><strong>{progress.lessonsTowardNext} of 3 lessons completed</strong> toward milestone {progress.nextMilestone} · {progress.completedLessons} eligible completed lessons in total.</p>;
 }
@@ -16,7 +16,7 @@ export function milestoneReviewStatus(milestone,recommendations) {
   if(rows.some(r=>r.status==="APPROVED"))return "Approved · ready to assign";
   return rows.length ? "Rejected by teacher" : "Generated";
 }
-export default function MilestoneProgress({ studentId, materials = [], onChanged, showRecommendations = true }) {
+export default function MilestoneProgress({ id, studentId, materials = [], onChanged, showRecommendations = true }) {
   const [state,setState]=useState(null),[error,setError]=useState(""),[busy,setBusy]=useState(false),[editing,setEditing]=useState("");
   const generation=useRef(0), changed=useRef(onChanged);changed.current=onChanged;
   async function load() {
@@ -36,7 +36,7 @@ export default function MilestoneProgress({ studentId, materials = [], onChanged
     catch(cause){setError(cause.message || "Could not update recommendation.");}
     finally{setBusy(false);}
   }
-  return <Card as="section" className="milestone-progress" aria-label="Three-lesson recommendations" aria-busy={busy}>
+  return <Card as="section" id={id} className="milestone-progress" aria-label="Three-lesson recommendations" aria-busy={busy}>
     <span className="dashboard-section-kicker">ADAPTIVE LEARNING</span><h2>Pathway after every 3 lessons</h2>
     {!studentId ? <p>Select a student to see their own lesson milestones and reviewed pathways.</p> : <>
       {error && <p role="alert">{error}<Button variant="quiet" onClick={load}>Retry milestone progress</Button></p>}
@@ -45,6 +45,7 @@ export default function MilestoneProgress({ studentId, materials = [], onChanged
         <p className="teacher-note">A lesson counts once when its student assignment is completed and a valid worksheet score is saved. Recommendations stay unassigned until teacher approval.</p>
         <Button variant="secondary" disabled={busy || state.completedLessons<3} onClick={()=>action(()=>api.evaluateMilestones(studentId))}>{busy ? "Evaluating…" : "Evaluate / retry eligible milestones"}</Button>
         <div className="milestone-history">{state.milestones.map(m=><details key={m.id}><summary>After {m.milestone} lessons · {milestoneReviewStatus(m,state.recommendations || [])}</summary><p>{m.message}</p>
+          {m.applicationOutcome && <section aria-label="Verified score-based outcome"><h3>Final outcome: {m.applicationOutcome === "INSUFFICIENT_DATA" ? "Insufficient Data" : m.applicationOutcome}</h3>{Number.isFinite(m.verifiedPerformancePercentage) && <p>Verified assessment performance: <strong>{m.verifiedPerformancePercentage.toFixed(2)}%</strong> · success threshold: 80%</p>}{m.outcomeDiscrepancy && <p className="teacher-note">Prediction difference: {m.outcomeDiscrepancy}</p>}{m.applicationOutcome === "Successful" && <p>No new remedial pathway was generated because verified performance met the 80% threshold.</p>}{m.applicationOutcome === "Needs Practice" && <p>Areas below 80% are checked against approved, grade-level curriculum activities. Any saved recommendations remain subject to teacher review.</p>}</section>}
           <ThreeLessonPerformance performance={m.threeLessonPerformance} />
           {m.modelVersion && <p className="teacher-note">Prediction: {m.predictedOutcome} · Model version: {m.modelVersion}</p>}
           <p className="teacher-note">{m.evidenceIds?.length || 0} saved evidence references{m.featureSnapshot?.generatedAt ? ` · Features generated ${new Date(m.featureSnapshot.generatedAt).toLocaleString()}` : ""}</p>

@@ -26,6 +26,7 @@ function ContentManagementPage({ items, busy, onDownload, onDelete, onSaveMateri
         </div>
         <span className="content-engine-status"><span /> Secure storage ready</span>
       </header>
+      <p className="teacher-note">Supported uploads: .pdf,.jpg,.jpeg,.png,.webp · up to 20 MB per file.</p>
 
       <GradeOneBookImport onImported={onImported} />
 
@@ -96,7 +97,7 @@ function ContentManagementPage({ items, busy, onDownload, onDelete, onSaveMateri
           </div>
         </details>
       </Card>
-      <WorksheetScores materials={items} />
+      <WorksheetScores materials={items} showClassroomActivity />
       {editor && <MaterialEditor material={editor.material} onClose={() => setEditor(null)}
         onSave={(metadata, file) => editor.material ? onUpdate(editor.material, metadata) : onSaveMaterial(metadata, file)} />}
     </div>

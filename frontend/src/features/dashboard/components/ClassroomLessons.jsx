@@ -22,9 +22,10 @@ export default function ClassroomLessons({ state, onOpenLesson, availableMateria
     </article>;
   }
   return <Card as="section" className="dashboard-activity-panel classroom-lessons" aria-busy={Boolean(state?.loading)}>
-    <details className="completed-lessons-history" open><summary>Recent learning activity <span className="dashboard-activity-chip">{state?.lessons?.length || availableMaterials.length}</span></summary>
+    <details className="completed-lessons-history recent-learning-activity" open><summary>Recent learning activity <span className="dashboard-activity-chip">{state?.lessons?.length || availableMaterials.length}</span></summary>
       <p className="teacher-note">Choose a learner to see their learning activity.</p>
       {state?.loading ? <p role="status">Loading classroom lessons…</p> : state?.error ? <div role="alert"><p>{state.error}</p><Button onClick={state.refresh}>Retry classroom data</Button></div> : !state?.lessons?.length ? <>
+        {availableMaterials.length === 0 && <p className="teacher-note">No classroom lessons assigned yet.</p>}
         {availableMaterials.length > 0 && <div aria-label="Next learning materials to assign">{availableMaterials.slice(0, 2).map((material, index) => <article className="classroom-lesson" key={material.id}>
           <p className="dashboard-section-kicker">{index === 0 ? "Next lesson" : "Following lesson"}</p>
           <div className="classroom-lesson-heading"><h3>{material.title}</h3><span className="dashboard-activity-chip">Grade group · {material.grade || "Choose when assigning"}</span></div>
