@@ -21,9 +21,7 @@ from sklearn.metrics import (
 )
 
 
-# ============================================================
-# CONFIGURATION
-# ============================================================
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -62,9 +60,7 @@ DEVICE = torch.device(
 print("Device:", DEVICE)
 
 
-# ============================================================
-# DATASET
-# ============================================================
+
 
 class CreativityDataset(Dataset):
 
@@ -135,13 +131,7 @@ class CreativityDataset(Dataset):
         return image, scores
 
 
-# ============================================================
-# IMAGE TRANSFORMS
-# ============================================================
 
-# Important:
-# Do NOT use strong color augmentation because
-# color_exploration is one of your target variables.
 
 train_transform = transforms.Compose(
     [
@@ -215,19 +205,11 @@ test_loader = DataLoader(
 )
 
 
-# ============================================================
-# CREATE RESNET18
-# ============================================================
 
-# weights=None means:
-# NO PRETRAINED WEIGHTS
-# The model learns from your dataset only.
 
 model = resnet18(weights=None)
 
-# Replace original ImageNet output layer
-# Original output = 1000 classes
-# Our output = 5 creativity scores
+
 
 number_features = model.fc.in_features
 
@@ -267,9 +249,7 @@ optimizer = torch.optim.Adam(
 )
 
 
-# ============================================================
-# EVALUATION FUNCTION
-# ============================================================
+
 
 def evaluate(loader):
 
@@ -460,9 +440,6 @@ for epoch in range(1, MAX_EPOCHS + 1):
         break
 
 
-# ============================================================
-# LOAD BEST MODEL
-# ============================================================
 
 model.load_state_dict(
     torch.load(
@@ -474,9 +451,7 @@ model.load_state_dict(
 model.eval()
 
 
-# ============================================================
-# TEST MODEL
-# ============================================================
+
 
 (
     test_loss,
@@ -499,9 +474,6 @@ test_r2 = r2_score(
 )
 
 
-# ============================================================
-# PER-TARGET METRICS
-# ============================================================
 
 target_metrics = {}
 
